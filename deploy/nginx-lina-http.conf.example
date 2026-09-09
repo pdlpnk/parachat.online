@@ -1,0 +1,14 @@
+# Bootstrap ONLY: install as /etc/nginx/sites-available/lina.conf before Certbot.
+# Replace lina.example.com. Do not replace another project's/default vhost.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name lina.example.com;
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/lina-acme;
+        default_type text/plain;
+        try_files $uri =404;
+    }
+    # Do not serve the cookie-authenticated application over HTTP.
+    location / { return 503; }
+}

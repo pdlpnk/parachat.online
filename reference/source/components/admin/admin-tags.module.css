@@ -1,0 +1,26 @@
+.chips { display: flex; min-width: 0; flex-wrap: wrap; gap: .28rem; }
+.chips > span, .chips > b { max-width: 8rem; overflow: hidden; border: 1px solid oklch(.66 .14 25 / 22%); border-radius: 99px; padding: .2rem .42rem; background: oklch(.55 .17 25 / 9%); color: oklch(.78 .07 25); font-size: .48rem; font-weight: 650; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.chips > b { border-color: oklch(1 0 0 / 8%); background: oklch(1 0 0 / 4%); color: oklch(.62 .01 25); }
+.filters { display: flex; gap: .35rem; max-width: 100%; overflow-x: auto; padding: .1rem .05rem .5rem; scrollbar-width: none; }
+.filters::-webkit-scrollbar { display: none; }
+.filters button { display: inline-flex; min-height: 2rem; flex: none; align-items: center; gap: .38rem; border: 1px solid oklch(1 0 0 / 7%); border-radius: 99px; padding: 0 .66rem; background: oklch(1 0 0 / 2%); color: oklch(.59 .01 25); font-size: .53rem; cursor: pointer; }
+.filters button[data-active] { border-color: oklch(.66 .18 25 / 30%); background: oklch(.56 .18 25 / 13%); color: oklch(.88 .03 25); }
+.filters small { display: grid; min-width: 1rem; height: 1rem; place-items: center; border-radius: 50%; background: oklch(1 0 0 / 6%); font-size: .42rem; }
+.manager { position: relative; }
+.manageButton { display: inline-flex; min-height: 2rem; align-items: center; gap: .38rem; border: 1px solid oklch(1 0 0 / 8%); border-radius: .58rem; padding: 0 .62rem; background: oklch(1 0 0 / 3%); color: oklch(.72 .02 25); font-size: .52rem; cursor: pointer; }
+.manageButton svg { width: .72rem; }
+.popover { position: fixed; z-index: 220; width: min(22.5rem, calc(100vw - 1.5rem)); max-height: min(30rem, calc(100dvh - 1.5rem)); overflow: hidden; border: 1px solid oklch(1 0 0 / 11%); border-radius: 1rem; padding: 1rem; background: linear-gradient(155deg, oklch(.17 .014 25), oklch(.125 .009 25)); box-shadow: 0 24px 80px #000c, inset 0 1px 0 oklch(1 0 0 / 5%); }
+.popover header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0 0 .85rem; }
+.popover header strong { font-size: .72rem; }.popover header button, .tagList > div > button, .create button { display: grid; width: 2rem; height: 2rem; flex: none; place-items: center; border: 0; border-radius: .58rem; background: transparent; color: oklch(.61 .01 25); cursor: pointer; }.popover header button:hover, .tagList > div > button:hover { background: oklch(1 0 0 / 5%); color: white; }.popover svg { width: .78rem; }
+.create { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .45rem; padding-bottom: .8rem; border-bottom: 1px solid oklch(1 0 0 / 7%); }.create input, .tagList input { min-width: 0; min-height: 2.5rem; border: 1px solid oklch(1 0 0 / 9%); border-radius: .68rem; padding: 0 .7rem; outline: 0; background: oklch(0 0 0 / 19%); color: white; font: inherit; font-size: .6rem; }.create input:focus, .tagList input:focus { border-color: oklch(.68 .18 25 / 38%); box-shadow: 0 0 0 3px oklch(.55 .2 25 / 8%); }.create button { width: 2.5rem; height: 2.5rem; background: oklch(.57 .2 25); color: white; }.create button:disabled { opacity: .35; }
+.tagList { display: grid; max-height: min(19rem, calc(100dvh - 11rem)); gap: .25rem; overflow-y: auto; margin-top: .75rem; padding-right: .15rem; overscroll-behavior: contain; }.tagList > div { display: grid; min-height: 2.55rem; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: .18rem; border-radius: .65rem; padding: .2rem .22rem .2rem .35rem; }.tagList > div:hover { background: oklch(1 0 0 / 3.5%); }.tagList > p { padding: 1.4rem; color: oklch(.52 .01 25); font-size: .58rem; text-align: center; }
+.tagToggle { display: grid; min-width: 0; min-height: 2rem; grid-template-columns: 1.1rem minmax(0,1fr) auto; align-items: center; gap: .35rem; border: 0; background: transparent; color: oklch(.7 .01 25); text-align: left; cursor: pointer; }.tagToggle > span { display: grid; width: 1rem; height: 1rem; place-items: center; border: 1px solid oklch(1 0 0 / 10%); border-radius: .3rem; }.tagToggle[data-selected] > span { border-color: oklch(.67 .19 25); background: oklch(.57 .2 25); color: white; }.tagToggle svg { width: .6rem; }.tagToggle strong { overflow: hidden; font-size: .55rem; text-overflow: ellipsis; white-space: nowrap; }.tagToggle small { color: oklch(.47 .01 25); font-size: .47rem; }
+.error { margin-top: .45rem; color: oklch(.75 .14 25); font-size: .5rem; }
+.backdrop { position: fixed; z-index: 219; inset: 0; border: 0; background: oklch(0 0 0 / 64%); backdrop-filter: blur(.2rem); }
+@media (max-width: 720px) {
+  .manageButton { width: 2.25rem; justify-content: center; padding: 0; font-size: 0; }
+  .manageButton svg { width: .8rem; }
+  .popover[data-mobile] { top: auto !important; right: 0; bottom: 0; left: 0 !important; width: 100%; max-height: min(78dvh, 38rem); border-right: 0; border-bottom: 0; border-left: 0; border-radius: 1.2rem 1.2rem 0 0; padding: 1rem max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); box-shadow: 0 -24px 70px #000b; }
+  .create input, .tagList input { font-size: 16px; }
+  .tagList { max-height: min(52dvh, 23rem); }
+}

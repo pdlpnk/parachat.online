@@ -1,0 +1,26 @@
+{
+  "apps": [{
+    "name": "lina",
+    "cwd": "/srv/lina/current",
+    "script": "/srv/lina/current/.next/standalone/server.js",
+    "interpreter": "/srv/lina/runtime/node/bin/node",
+    "node_args": ["--env-file=/srv/lina/shared/lina.env"],
+    "exec_mode": "fork",
+    "instances": 1,
+    "watch": false,
+    "autorestart": true,
+    "min_uptime": "10s",
+    "max_restarts": 10,
+    "restart_delay": 3000,
+    "kill_timeout": 10000,
+    "max_memory_restart": "768M",
+    "time": true,
+    "out_file": "/srv/lina/logs/app-out.log",
+    "error_file": "/srv/lina/logs/app-error.log",
+    "env": {
+      "NODE_ENV": "production",
+      "HOSTNAME": "127.0.0.1",
+      "PORT": "3107"
+    }
+  }]
+}

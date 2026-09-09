@@ -1,0 +1,60 @@
+// REFERENCE ONLY: concise snapshot of relevant VX House concepts.
+// It intentionally omits legacy relations and is not a compilable replacement schema.
+enum SupportConversationStatus { CREATED ASSIGNED WAITING_OPERATOR WAITING_USER RESOLVED CLOSED }
+enum SupportMessageAuthorType { USER OPERATOR SYSTEM }
+
+model User {
+  id          String  @id @default(uuid()) @db.Uuid
+  vxId        String  @unique @default(dbgenerated()) @db.VarChar(8)
+  email       String  @unique @db.VarChar(320)
+  displayName String? @db.VarChar(120)
+  avatarEmoji String? @unique @db.VarChar(32)
+}
+
+model SupportConversation {
+  id           String                    @id @default(uuid()) @db.Uuid
+  userId       String                    @db.Uuid
+  category     String                    @db.VarChar(80)
+  status       SupportConversationStatus @default(CREATED)
+  subject      String                    @db.VarChar(240)
+  context      Json
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  closedAt     DateTime?
+}
+
+model SupportMessage {
+  id             String                   @id @default(uuid()) @db.Uuid
+  conversationId String                   @db.Uuid
+  authorType     SupportMessageAuthorType
+  authorId       String?                  @db.Uuid
+  bodyProtected  Json
+  createdAt      DateTime                 @default(now())
+}
+
+model SupportAttachment {
+  id               String   @id @default(uuid()) @db.Uuid
+  messageId        String   @db.Uuid
+  fileName         String   @db.VarChar(240)
+  mediaType        String   @db.VarChar(120)
+  sizeBytes        Int
+  contentProtected Json
+  createdAt        DateTime @default(now())
+}
+
+model AdminTag {
+  id        String @id @default(uuid()) @db.Uuid
+  name      String @unique @db.VarChar(60)
+}
+
+model AdminTagAssignment {
+  userId String @db.Uuid
+  tagId  String @db.Uuid
+  @@id([userId, tagId])
+}
+
+// Current behavior not represented cleanly in schema:
+// - personal conversation is deterministic/marked in context;
+// - admin/player read timestamps are stored in context JSON;
+// - Active is derived from existence of USER messages or CLOSED status.
+// The recommended new schema promotes those concepts to typed columns/tables.

@@ -1,0 +1,45 @@
+{
+  "name": "chat-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LINA — independent chat-only application foundation",
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "engines": { "node": ">=24.0.0 <25", "pnpm": ">=11 <12" },
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "prisma generate && next build && node scripts/prepare-standalone.mjs",
+    "start": "HOSTNAME=127.0.0.1 node .next/standalone/server.js",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "node --import tsx --test tests/unit/*.test.ts",
+    "test:db": "node --import tsx --test --test-concurrency=1 tests/database/*.test.ts",
+    "db:validate": "prisma validate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "dotenv": "17.4.2",
+    "next": "16.3.4",
+    "pg": "8.23.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "0.0.1",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@eslint/compat": "2.1.1",
+    "@types/node": "24.13.3",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "eslint": "10.10.0",
+    "eslint-config-next": "16.3.4",
+    "prisma": "7.10.0",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3"
+  }
+}

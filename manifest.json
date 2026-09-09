@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "package": "vx-house-chat-only-handoff",
+  "generatedOn": "2026-09-06",
+  "purpose": "Reference package for a new standalone chat-only site",
+  "runtimeSafe": true,
+  "productionMutationsPerformed": false,
+  "containsSecrets": false,
+  "containsProductionData": false,
+  "entrypoints": [
+    "README.md",
+    "MASTER_HANDOFF.md",
+    "docs/SOURCE_MANIFEST.md"
+  ],
+  "requiredDocs": [
+    "docs/PRODUCT_SCOPE.md",
+    "docs/MESSENGER_ARCHITECTURE.md",
+    "docs/DATABASE.md",
+    "docs/CLIENT_IDENTITY.md",
+    "docs/ADMIN_AUTH.md",
+    "docs/API.md",
+    "docs/ACTIVE_ARCHIVE.md",
+    "docs/TAGS.md",
+    "docs/SYSTEM_MESSAGES.md",
+    "docs/ATTACHMENTS.md",
+    "docs/REALTIME.md",
+    "docs/UI_UX.md",
+    "docs/RESPONSIVE_LESSONS.md",
+    "docs/INFRASTRUCTURE.md",
+    "docs/DEPLOYMENT.md",
+    "docs/SECURITY.md",
+    "docs/TESTING.md",
+    "docs/DEPENDENCIES.md",
+    "docs/SOURCE_MANIFEST.md",
+    "docs/KNOWN_ISSUES_AND_LESSONS.md"
+  ],
+  "referenceBundles": [
+    {
+      "path": "reference/source/components/ui/",
+      "classification": "COPY",
+      "reason": "Small reusable avatar and VX ID presentation helpers"
+    },
+    {
+      "path": "reference/source/lib/user-avatar.ts",
+      "classification": "COPY",
+      "reason": "Safe emoji pool and deterministic fallback"
+    },
+    {
+      "path": "reference/source/lib/vx-id.ts",
+      "classification": "COPY",
+      "reason": "VX ID validation and search normalization"
+    },
+    {
+      "path": "reference/source/components/messenger/",
+      "classification": "ADAPT",
+      "reason": "Client messenger UI, attachment preview, scroll and composer patterns"
+    },
+    {
+      "path": "reference/source/components/admin/",
+      "classification": "ADAPT",
+      "reason": "Admin Messenger, Participants and tag UI; replace User domain with Client"
+    },
+    {
+      "path": "reference/source/app/api/admin/",
+      "classification": "ADAPT",
+      "reason": "Admin route boundaries, rate limiting and authorization patterns"
+    },
+    {
+      "path": "reference/source/app/api/support/",
+      "classification": "ADAPT",
+      "reason": "Ownership-protected message/read/attachment endpoints; rename and replace auth"
+    },
+    {
+      "path": "reference/source/lib/services/admin-messenger-service.ts",
+      "classification": "ADAPT",
+      "reason": "Active/Archive, unread, sorting, notes and attachments semantics"
+    },
+    {
+      "path": "reference/source/lib/services/admin-tag-service.ts",
+      "classification": "ADAPT",
+      "reason": "Relational administrative tag CRUD"
+    },
+    {
+      "path": "reference/source/lib/services/personal-conversation.ts",
+      "classification": "ADAPT",
+      "reason": "Permanent conversation and localized welcome idempotency"
+    },
+    {
+      "path": "reference/source/lib/services/support-notification-service.ts",
+      "classification": "REFERENCE_ONLY",
+      "reason": "Useful ownership/idempotency/file logic mixed with legacy ticket scope"
+    },
+    {
+      "path": "reference/source/lib/repositories/",
+      "classification": "REFERENCE_ONLY",
+      "reason": "Current repository is coupled to old models"
+    },
+    {
+      "path": "reference/source/lib/auth/",
+      "classification": "REFERENCE_ONLY",
+      "reason": "User session implementation informs admin auth only"
+    },
+    {
+      "path": "reference/source/lib/server/",
+      "classification": "REFERENCE_ONLY",
+      "reason": "Current principal wiring is user-centric"
+    },
+    {
+      "path": "reference/source/lib/i18n/system-messages.ts",
+      "classification": "REFERENCE_ONLY",
+      "reason": "Structured system-message localization pattern"
+    },
+    {
+      "path": "reference/source/tests/",
+      "classification": "ADAPT",
+      "reason": "Reuse behavioral assertions, not old fixtures/domain"
+    },
+    {
+      "path": "reference/source/infrastructure/",
+      "classification": "REFERENCE_ONLY",
+      "reason": "Deployment patterns require new names, database, secrets and reduced dependencies"
+    },
+    {
+      "path": "reference/prisma/current-messenger-models.prisma",
+      "classification": "REFERENCE_ONLY",
+      "reason": "Non-compilable concise snapshot of current concepts"
+    },
+    {
+      "path": "reference/prisma/recommended-chat-only-schema.prisma",
+      "classification": "ADAPT",
+      "reason": "Starting design for the new database only"
+    },
+    {
+      "path": "reference/prisma/migrations/",
+      "classification": "REFERENCE_ONLY",
+      "reason": "Historical VX ID, tags and emoji migrations; never apply directly"
+    },
+    {
+      "path": "reference/.env.example",
+      "classification": "ADAPT",
+      "reason": "Secret-free environment contract for the new site"
+    }
+  ],
+  "doNotCopy": [
+    "production .env or secrets",
+    "database dumps, logs, uploads or user data",
+    "node_modules, dist, .next or .git",
+    "client email/password/verification/reset/onboarding",
+    "Keitaro, analytics and subid",
+    "tasks, VX Points, rewards, trust, ranks and progress",
+    "partner and CMS modules",
+    "the full current Prisma schema"
+  ]
+}

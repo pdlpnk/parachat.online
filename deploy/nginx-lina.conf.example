@@ -1,0 +1,93 @@
+# Install as /etc/nginx/sites-available/lina.conf AFTER issuing the certificate.
+# Ubuntu includes sites-enabled/* inside http {}; map/zone declarations need http scope.
+# Replace ALL lina.example.com occurrences; keep the zones/site paths LINA-specific.
+# Direct Internet -> this Nginx assumed. Never trust arbitrary X-Forwarded-For.
+map $request_method $lina_write_ip {
+    default "";
+    POST $binary_remote_addr;
+}
+limit_req_zone $binary_remote_addr zone=lina_general:10m rate=20r/s;
+limit_req_zone $lina_write_ip zone=lina_start:1m rate=10r/m;
+limit_req_zone $lina_write_ip zone=lina_send:10m rate=60r/m;
+limit_conn_zone $binary_remote_addr zone=lina_connections:10m;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name lina.example.com;
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/lina-acme;
+        default_type text/plain;
+        try_files $uri =404;
+    }
+    location / { return 308 https://lina.example.com$request_uri; }
+}
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name lina.example.com;
+    ssl_certificate /etc/letsencrypt/live/lina.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/lina.example.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:lina_tls:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    access_log /var/log/nginx/lina-access.log;
+    error_log /var/log/nginx/lina-error.log warn;
+    server_tokens off;
+    client_max_body_size 64k;
+    client_body_timeout 15s;
+    client_header_timeout 15s;
+    send_timeout 30s;
+    keepalive_timeout 30s;
+    limit_req_status 429;
+    limit_conn_status 429;
+    limit_conn lina_connections 30;
+
+    # Named internal location keeps rate-limit errors safe and compatible with UI JSON.
+    error_page 429 = @lina_rate_limited;
+    location @lina_rate_limited {
+        default_type application/json;
+        add_header Cache-Control "no-store" always;
+        add_header Retry-After "60" always;
+        return 429 '{"error":"Слишком много запросов. Повторите через минуту."}';
+    }
+
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port $server_port;
+    # Preserve the browser Origin; do not forge a trusted Origin for foreign requests.
+    proxy_connect_timeout 3s;
+    proxy_read_timeout 30s;
+    proxy_send_timeout 30s;
+    proxy_next_upstream off;
+    proxy_cache off;
+
+    location = /api/player/bootstrap {
+        limit_req zone=lina_general burst=40 nodelay;
+        limit_req zone=lina_start burst=10 nodelay;
+        proxy_pass http://127.0.0.1:3107;
+    }
+    location = /api/player/start {
+        limit_req zone=lina_general burst=40 nodelay;
+        limit_req zone=lina_start burst=10 nodelay;
+        proxy_pass http://127.0.0.1:3107;
+    }
+    location = /api/player/messages {
+        limit_req zone=lina_general burst=40 nodelay;
+        # Empty map key excludes GET polling from the POST-only send ceiling.
+        limit_req zone=lina_send burst=15 nodelay;
+        proxy_pass http://127.0.0.1:3107;
+    }
+    location / {
+        limit_req zone=lina_general burst=40 nodelay;
+        # Includes both health endpoints, read endpoint and standalone static assets.
+        proxy_pass http://127.0.0.1:3107;
+    }
+}

@@ -1,0 +1,189 @@
+// REFERENCE DESIGN ONLY. New standalone database; never apply to VX House production.
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum LocaleCode {
+  RU
+  EN
+  TR
+  AZ
+}
+
+enum MessageAuthorType {
+  USER
+  OPERATOR
+  SYSTEM
+}
+
+model Client {
+  id             String             @id @default(uuid()) @db.Uuid
+  // Migration must create next_vx_id(): sequence -> 'VX' || lpad(value, 6, '0').
+  vxId           String             @unique @default(dbgenerated("next_vx_id()")) @db.VarChar(8)
+  displayName    String             @db.VarChar(80)
+  locale         LocaleCode         @default(EN)
+  avatarEmoji    String?            @unique @db.VarChar(32)
+  lastSeenAt     DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  credentials    ClientCredential[]
+  conversation   Conversation?
+  messages       Message[]
+  tagAssignments ClientTag[]
+}
+
+model ClientCredential {
+  id         String    @id @default(uuid()) @db.Uuid
+  clientId   String    @db.Uuid
+  tokenHash  String    @unique @db.Char(64)
+  expiresAt  DateTime
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  client     Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, revokedAt])
+  @@index([expiresAt])
+}
+
+model Conversation {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  clientId           String                  @unique @db.Uuid
+  firstUserMessageAt DateTime?
+  lastMessageAt      DateTime
+  closedAt           DateTime?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  client             Client                  @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  messages           Message[]
+  attachments        Attachment[]
+  adminReads         AdminConversationRead[]
+  clientRead         ClientConversationRead?
+  internalNotes      InternalNote[]
+
+  @@index([closedAt, firstUserMessageAt, lastMessageAt])
+}
+
+model Message {
+  id             String            @id @default(uuid()) @db.Uuid
+  conversationId String            @db.Uuid
+  authorType     MessageAuthorType
+  clientAuthorId String?           @db.Uuid
+  adminAuthorId  String?           @db.Uuid
+  body           String?           @db.VarChar(5000)
+  systemKey      String?           @db.VarChar(160)
+  systemParams   Json?
+  sourceLocale   LocaleCode?
+  idempotencyKey String            @db.VarChar(160)
+  createdAt      DateTime          @default(now())
+  conversation   Conversation      @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+  clientAuthor   Client?           @relation(fields: [clientAuthorId], references: [id], onDelete: SetNull)
+  adminAuthor    Admin?            @relation(fields: [adminAuthorId], references: [id], onDelete: SetNull)
+  attachments    Attachment[]
+
+  @@unique([conversationId, idempotencyKey])
+  @@index([conversationId, createdAt, id])
+}
+
+model Attachment {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @db.Uuid
+  messageId      String       @db.Uuid
+  storageKey     String       @unique @db.VarChar(255)
+  fileName       String       @db.VarChar(240)
+  mediaType      String       @db.VarChar(120)
+  sizeBytes      Int
+  sha256         String       @db.Char(64)
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+  message        Message      @relation(fields: [messageId], references: [id], onDelete: Restrict)
+
+  @@index([messageId, createdAt])
+  @@index([conversationId, createdAt])
+}
+
+model ClientConversationRead {
+  conversationId    String       @id @db.Uuid
+  lastReadMessageId String?      @db.Uuid
+  lastReadAt        DateTime
+  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model Admin {
+  id           String                  @id @default(uuid()) @db.Uuid
+  email        String                  @unique @db.VarChar(320)
+  displayName  String                  @db.VarChar(120)
+  passwordHash String                  @db.VarChar(255)
+  disabledAt   DateTime?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  sessions     AdminSession[]
+  messages     Message[]
+  reads        AdminConversationRead[]
+  notes        InternalNote[]
+}
+
+model AdminSession {
+  id                String    @id @default(uuid()) @db.Uuid
+  adminId           String    @db.Uuid
+  tokenHash         String    @unique @db.Char(64)
+  expiresAt         DateTime
+  absoluteExpiresAt DateTime
+  lastSeenAt        DateTime?
+  revokedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  admin             Admin     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, revokedAt])
+  @@index([expiresAt])
+}
+
+model AdminConversationRead {
+  conversationId    String       @db.Uuid
+  adminId           String       @db.Uuid
+  lastReadMessageId String?      @db.Uuid
+  lastReadAt        DateTime
+  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  admin             Admin        @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, adminId])
+  @@index([adminId, lastReadAt])
+}
+
+model AdminTag {
+  id             String      @id @default(uuid()) @db.Uuid
+  name           String      @unique @db.VarChar(60)
+  normalizedName String      @unique @db.VarChar(60)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  assignments    ClientTag[]
+}
+
+model ClientTag {
+  clientId   String   @db.Uuid
+  tagId      String   @db.Uuid
+  assignedAt DateTime @default(now())
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tag        AdminTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([clientId, tagId])
+  @@index([tagId, clientId])
+}
+
+model InternalNote {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @db.Uuid
+  authorId       String       @db.Uuid
+  body           String       @db.VarChar(5000)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+  author         Admin        @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([conversationId, createdAt])
+}

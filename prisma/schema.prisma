@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Locale {
+  RU
+  EN
+  TR
+  AZ
+}
+
+enum MessageAuthorType {
+  USER
+  OPERATOR
+  SYSTEM
+}
+
+model Client {
+  id          String   @id @default(uuid()) @db.Uuid
+  liNumber    Int      @unique @default(autoincrement())
+  // PostgreSQL stored generated column; see initial migration.
+  liId        String   @unique @default(dbgenerated()) @db.VarChar(8)
+  displayName String   @db.VarChar(80)
+  locale      Locale   @default(EN)
+  avatarEmoji String   @unique @db.VarChar(32)
+  lastSeenAt  DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
+
+  credentials  ClientCredential[]
+  // UNIQUE provides at-most-one; a deferred constraint trigger requires exactly one at commit.
+  conversation Conversation?
+  messages     Message[]
+  tags         ClientTag[]
+}
+
+model ClientCredential {
+  id             String    @id @default(uuid()) @db.Uuid
+  clientId       String    @db.Uuid
+  credentialHash String    @unique @db.Char(64)
+  expiresAt      DateTime  @db.Timestamptz(3)
+  lastUsedAt     DateTime? @db.Timestamptz(3)
+  revokedAt      DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  client         Client    @relation(fields: [clientId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([clientId])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+
+model Conversation {
+  id                 String    @id @default(uuid()) @db.Uuid
+  clientId           String    @unique @db.Uuid
+  firstUserMessageAt DateTime? @db.Timestamptz(3)
+  lastMessageAt      DateTime? @db.Timestamptz(3)
+  closedAt           DateTime? @db.Timestamptz(3)
+  // Incremented only by the message-ordering DB trigger, not read markers.
+  lastSequence       Int       @default(0)
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
+  client             Client    @relation(fields: [clientId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  messages           Message[]
+  attachments        Attachment[]
+  clientRead         ClientConversationRead?
+  adminReads         AdminConversationRead[]
+
+  // Target for the composite ownership FK added in SQL.
+  @@unique([id, clientId])
+  // Partial Active/Archive ordering indexes are defined in the SQL migration.
+}
+
+model Message {
+  id             String            @id @default(uuid()) @db.Uuid
+  conversationId String            @db.Uuid
+  // BEFORE INSERT trigger allocates under the parent conversation row lock.
+  sequence       Int               @default(dbgenerated())
+  authorType     MessageAuthorType
+  clientAuthorId String?           @db.Uuid
+  adminAuthorId  String?           @db.Uuid
+  body           String?           @db.VarChar(5000)
+  systemKey      String?           @db.VarChar(160)
+  systemParams   Json?
+  sourceLocale   Locale?
+  idempotencyKey String            @db.VarChar(160)
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+  conversation   Conversation      @relation(fields: [conversationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  clientAuthor   Client?           @relation(fields: [clientAuthorId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  adminAuthor    Admin?            @relation(fields: [adminAuthorId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  attachments    Attachment[]
+  clientReads    ClientConversationRead[]
+  adminReads     AdminConversationRead[]
+
+  @@unique([conversationId, idempotencyKey])
+  @@unique([conversationId, sequence])
+  @@unique([id, conversationId])
+  @@index([conversationId, authorType, createdAt])
+}
+
+model Attachment {
+  id              String       @id @default(uuid()) @db.Uuid
+  conversationId  String       @db.Uuid
+  messageId       String       @db.Uuid
+  storageKey      String       @unique @db.VarChar(255)
+  displayFilename String       @db.VarChar(240)
+  mediaType       String       @db.VarChar(120)
+  byteSize        Int
+  checksum        String       @db.Char(64)
+  createdAt       DateTime     @default(now()) @db.Timestamptz(3)
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  message         Message      @relation(fields: [messageId, conversationId], references: [id, conversationId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([messageId, conversationId])
+  @@index([conversationId])
+}
+
+model Admin {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique @db.VarChar(320)
+  displayName  String   @db.VarChar(120)
+  passwordHash String   @db.VarChar(255)
+  disabledAt   DateTime? @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+  sessions     AdminSession[]
+  messages     Message[]
+  reads        AdminConversationRead[]
+}
+
+model AdminSession {
+  id                String   @id @default(uuid()) @db.Uuid
+  adminId           String   @db.Uuid
+  tokenHash         String   @unique @db.Char(64)
+  idleExpiresAt     DateTime @db.Timestamptz(3)
+  absoluteExpiresAt DateTime @db.Timestamptz(3)
+  lastSeenAt        DateTime @default(now()) @db.Timestamptz(3)
+  revokedAt         DateTime? @db.Timestamptz(3)
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  admin             Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([adminId])
+  @@index([idleExpiresAt])
+  @@index([absoluteExpiresAt])
+}
+
+model AdminTag {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String   @db.VarChar(60)
+  normalizedName String   @unique @db.VarChar(60)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  clients        ClientTag[]
+}
+
+model ClientTag {
+  clientId String @db.Uuid
+  tagId    String @db.Uuid
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  tag      AdminTag @relation(fields: [tagId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([clientId, tagId])
+  @@index([tagId, clientId])
+}
+
+model ClientConversationRead {
+  conversationId   String   @id @db.Uuid
+  // NULL = no messages acknowledged. Composite FK prevents cross-conversation cursors.
+  lastReadSequence Int?
+  lastReadAt       DateTime @default(now()) @db.Timestamptz(3)
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  message          Message? @relation(fields: [conversationId, lastReadSequence], references: [conversationId, sequence], onDelete: Restrict, onUpdate: Restrict)
+}
+
+model AdminConversationRead {
+  conversationId   String   @db.Uuid
+  adminId          String   @db.Uuid
+  lastReadSequence Int?
+  lastReadAt       DateTime @default(now()) @db.Timestamptz(3)
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  admin            Admin @relation(fields: [adminId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  message          Message? @relation(fields: [conversationId, lastReadSequence], references: [conversationId, sequence], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([conversationId, adminId])
+  @@index([adminId])
+}
