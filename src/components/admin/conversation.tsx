@@ -126,7 +126,7 @@ export function AdminConversation({ id, initial, onUpdate, onBack, onTags }: { i
       catch(e){if(alive.current&&!sessionFailure(e))setError(e instanceof Error?e.message:'Не удалось изменить состояние.');}finally{if(alive.current)setStateBusy(false);}
     }}>{conversation.closed?'Открыть':'В архив'}</button></div></header>
     <div className="admin-detail-tags">{conversation.tags.map(tag=><span className="tag-chip" key={tag.id}>{tag.name}</span>)}</div>
-    {expired ? <aside className="chat-status" role="alert">Сессия администратора завершена. <a href="/admin/login">Войти снова</a></aside> : offline && <aside className="chat-status" role="status">Не удаётся обновить чат. Повторяем подключение…</aside>}
+    {expired ? <aside className="chat-status" role="alert">Сессия администратора завершена. <a href="/admin">Войти снова</a></aside> : offline && <aside className="chat-status" role="status">Не удаётся обновить чат. Повторяем подключение…</aside>}
     <section ref={history} className="messages" aria-label="Сообщения" tabIndex={0} onScroll={() => {
       const el = history.current!;
       const resized = historySize.current.height !== el.clientHeight || historySize.current.content !== el.scrollHeight;

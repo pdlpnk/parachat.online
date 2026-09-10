@@ -12,7 +12,7 @@ async function handle(request:Request,ctx:Context){
     if(method!=='GET')requireOrigin(request);
     const context=await adminContext(), query=new URL(request.url).searchParams;
     if(method==='POST' && path.join('/')==='login'){
-      const b=await adminBody(request,['email','password']); const session=await adminLogin(context[0],b.email,b.password);
+      const b=await adminBody(request,['password']); const session=await adminLogin(context[0],b.password);
       const result=response({ok:true});const c=adminCookie();result.cookies.set(c.name,session.raw,{...c.flags,expires:session.expiresAt});return result;
     }
     if(method==='POST' && path.join('/')==='logout'){

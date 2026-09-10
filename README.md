@@ -107,7 +107,7 @@ Full Stage 2 results: [Player Identity report](docs/LINA_PLAYER_IDENTITY_REPORT.
 ## Stage 2.5 — Messenger UI
 
 The current presentation includes a manager-focused header, three bubble styles, a live player composer and matching
-name landing. Stage 3 activates sending/polling/read; Admin Messenger is available at `/admin` with a separate CLI-created account. `/dev/messenger` shows render-only design
+name landing. Stage 3 activates sending/polling/read; Admin Messenger is available at `/admin` with a shared password-only CLI-created account. `/dev/messenger` shows render-only design
 fixtures in development and returns 404 in production. See [UI/UX report](docs/LINA_MESSENGER_UI_REPORT.md).
 
 ## Stage 3 verification
@@ -119,8 +119,9 @@ Unsent drafts/retry keys live only in the current tab and do not survive reload.
 ## Stage 4 Admin Messenger
 
 See [Admin contract and verification](docs/LINA_ADMIN_MESSENGER_REPORT.md) and
-[future production upgrade](deploy/STAGE4_UPGRADE.md). No production deployment was performed.
-Create the first administrator interactively with `pnpm admin:create` using the intended DATABASE_URL.
+[original Stage 4 upgrade](deploy/STAGE4_UPGRADE.md) and [password-only upgrade](deploy/PASSWORD_ONLY_UPGRADE.md). No production deployment was performed.
+Create the shared administrator interactively with `pnpm admin:create` using the intended DATABASE_URL.
+Only a password is requested twice; `/admin` shows a single password input when unauthenticated.
 Password input is hidden; no password arguments or public signup endpoint exist.
 
 Local HTTP suite (disposable test DB only): `node --import tsx tests/http/admin-smoke.ts`.

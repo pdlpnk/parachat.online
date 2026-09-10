@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomBytes,randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
+import { ADMIN_ACCOUNT_EMAIL } from '../../src/server/admin/account';
 import { passwordHash } from '../../src/server/admin/password';
 const database=process.env.TEST_DATABASE_URL;
 if(!database||process.env.LINA_ALLOW_DB_TESTS!=='1'||!['localhost','127.0.0.1'].includes(new URL(database).hostname)||!/^\/lina_test(?:_[a-z0-9_]+)?$/.test(new URL(database).pathname))throw Error('Disposable local test DB required');
@@ -14,16 +15,18 @@ async function check(path:string,o:Options,code:number){const r=await req(path,o
 function cookie(r:Response,name:string){return r.headers.getSetCookie().find(v=>v.startsWith(name+'='))!.split(';')[0]!;}
 try{
  let ready=false;for(let i=0;i<100;i++){try{if((await req('/api/health/live')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,100));}assert.ok(ready);
- const email=`${randomUUID()}@example.invalid`,password='HTTP test password!';
- await pool.query('INSERT INTO "Admin" (id,email,"displayName","passwordHash","updatedAt") VALUES ($1,$2,$3,$4,clock_timestamp())',[randomUUID(),email,'HTTP admin',await passwordHash(password)]);
+ const email=ADMIN_ACCOUNT_EMAIL,password='HTTP test password!';
+ await pool.query('INSERT INTO "Admin" (id,email,"displayName","passwordHash","updatedAt") VALUES ($1,$2,$3,$4,clock_timestamp()) ON CONFLICT (email) DO UPDATE SET "passwordHash"=EXCLUDED."passwordHash", "disabledAt"=NULL',[randomUUID(),email,'HTTP admin',await passwordHash(password)]);
  await pool.query('DELETE FROM "AdminLoginThrottle"');
- assert.equal((await req('/admin')).status,307);assert.equal((await req('/admin/login')).status,200);
+ const landing=await req('/admin');assert.equal(landing.status,200);const html=await landing.text();assert.match(html,/type="password"/);assert.doesNotMatch(html,/type="email"|shared-admin@lina.invalid/);assert.equal((html.match(/<input\b/g)??[]).length,1);assert.equal((await req('/admin/login')).status,307);
+ await check('/api/admin/login',{method:'POST',body:{email,password}},400);
+ await check('/api/admin/login',{method:'POST',body:{}},400);
  await check('/api/admin/conversations',{},401);await check('/api/admin/tags',{},401);
- for(const bad of ['https://evil.invalid','null',''])await check('/api/admin/login',{method:'POST',origin:bad,body:{email,password}},403);
+ for(const bad of ['https://evil.invalid','null',''])await check('/api/admin/login',{method:'POST',origin:bad,body:{password}},403);
  await check('/api/admin/login',{method:'POST',raw:'x'.repeat(2049)},413);
- await check('/api/admin/login',{method:'POST',body:{email,password:'incorrect password'}},401);
- const login=await req('/api/admin/login',{method:'POST',body:{email,password}});assert.equal(login.status,200);const admin=cookie(login,'__Host-lina_admin');assert.match(login.headers.get('set-cookie')!,/HttpOnly/i);assert.match(login.headers.get('set-cookie')!,/Secure/i);assert.match(login.headers.get('set-cookie')!,/SameSite=lax/i);assert.match(login.headers.get('set-cookie')!,/Path=\//i);
- assert.equal((await req('/admin',{cookie:admin})).status,200);
+ await check('/api/admin/login',{method:'POST',body:{password:'incorrect password'}},401);
+ const login=await req('/api/admin/login',{method:'POST',body:{password}});assert.equal(login.status,200);const admin=cookie(login,'__Host-lina_admin');assert.match(login.headers.get('set-cookie')!,/HttpOnly/i);assert.match(login.headers.get('set-cookie')!,/Secure/i);assert.match(login.headers.get('set-cookie')!,/SameSite=lax/i);assert.match(login.headers.get('set-cookie')!,/Path=\//i);
+ const workspace=await req('/admin',{cookie:admin});assert.equal(workspace.status,200);assert.doesNotMatch(await workspace.text(),/type="password"|HTTP admin|shared-admin@lina.invalid/);
  const bootstrap=cookie(await req('/api/player/bootstrap',{method:'POST'}),'__Host-lina_bootstrap');
  const player=cookie(await req('/api/player/start',{method:'POST',cookie:bootstrap,body:{displayName:'HTTP stage4'}}),'__Host-lina_client');
  await check('/api/admin/conversations',{cookie:player},401);await check('/api/player/messages?after=0',{cookie:admin},401);
@@ -45,8 +48,8 @@ try{
  await check('/api/admin/tags/'+tag.id,{method:'DELETE',cookie:admin,body:{}},200);
  await check('/api/admin/logout',{method:'POST',cookie:admin,body:{}},200);await check(base+'/messages',{cookie:admin},401);
  await pool.query('DELETE FROM "AdminLoginThrottle"');
- for(let i=0;i<20;i++)await check('/api/admin/login',{method:'POST',body:{email:'invalid',password:'x'}},401);
- await check('/api/admin/login',{method:'POST',body:{email,password}},429);
+ for(let i=0;i<20;i++)await check('/api/admin/login',{method:'POST',body:{password:'x'}},401);
+ await check('/api/admin/login',{method:'POST',body:{password}},429);
  assert.equal((await req('/dev/messenger')).status,404);await check('/api/admin/signup',{method:'POST',body:{}},404);
  console.log(`PASS: ${checks} admin HTTP checks, production cookies/SSR, isolation, origin, body limits, send/retry/player polling, read/archive/tags/logout/login ceiling.`);
 }finally{await pool.end();await new Promise<void>(resolve=>{if(server.exitCode!==null)return resolve();server.once('exit',()=>resolve());server.kill('SIGTERM');});}

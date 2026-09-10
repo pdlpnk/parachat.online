@@ -1,3 +1,2 @@
-import { AdminLogin } from '@/components/admin/login';
-export const dynamic='force-dynamic';
-export default function LoginPage(){return <AdminLogin/>;}
+import { redirect } from 'next/navigation';
+export default function LoginPage(){redirect('/admin');}

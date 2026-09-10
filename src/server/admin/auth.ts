@@ -1,25 +1,24 @@
 import { randomBytes } from 'node:crypto';
 import type { PrismaClient, Prisma } from '../../generated/prisma/client';
-import { adminEmail } from '../../lib/admin';
+import { ADMIN_ACCOUNT_EMAIL } from './account';
 import { validCredential } from '../identity/crypto';
 import { StartError } from '../identity/service';
 import { adminTokenHash, verifyPassword } from './password';
 export const ADMIN_IDLE_MS = 30 * 60 * 1000, ADMIN_ABSOLUTE_MS = 12 * 60 * 60 * 1000, LOGIN_LIMIT = 20;
 export const txOptions = { maxWait: 5000, timeout: 10000 };
-export async function adminLogin(db: PrismaClient, emailInput: unknown, password: unknown) {
+export async function adminLogin(db: PrismaClient, password: unknown) {
   // One persistent bucket, not one row per untrusted email/IP. Reservation commits even on failed login.
   const slots = await db.$queryRaw<{ attempts: number }[]>`INSERT INTO "AdminLoginThrottle" (id, "windowStartedAt", attempts) VALUES (1, clock_timestamp(), 1)
     ON CONFLICT (id) DO UPDATE SET attempts = CASE WHEN "AdminLoginThrottle"."windowStartedAt" <= clock_timestamp() - interval '1 minute' THEN 1 ELSE "AdminLoginThrottle".attempts + 1 END,
     "windowStartedAt" = CASE WHEN "AdminLoginThrottle"."windowStartedAt" <= clock_timestamp() - interval '1 minute' THEN clock_timestamp() ELSE "AdminLoginThrottle"."windowStartedAt" END
     WHERE "AdminLoginThrottle"."windowStartedAt" <= clock_timestamp() - interval '1 minute' OR "AdminLoginThrottle".attempts < ${LOGIN_LIMIT} RETURNING attempts`;
   if (!slots.length) throw new StartError(429, 'Слишком много попыток входа. Повторите через минуту.');
-  const email = adminEmail(emailInput);
-  const admin = email ? await db.admin.findUnique({ where: { email } }) : null;
+  const admin = await db.admin.findUnique({ where: { email: ADMIN_ACCOUNT_EMAIL } });
   const matches = await verifyPassword(password, admin?.passwordHash);
-  if (!matches || !admin || admin.disabledAt) throw new StartError(401, 'Неверный email или пароль.');
+  if (!matches || !admin || admin.disabledAt) throw new StartError(401, 'Неверный пароль.');
   return db.$transaction(async tx => {
     const rows = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Admin" WHERE id = ${admin.id}::uuid AND "disabledAt" IS NULL AND "passwordHash" = ${admin.passwordHash} FOR SHARE`;
-    if (!rows.length) throw new StartError(401, 'Неверный email или пароль.');
+    if (!rows.length) throw new StartError(401, 'Неверный пароль.');
     const raw = randomBytes(32).toString('base64url'), now = new Date();
     const expiresAt = new Date(now.getTime() + ADMIN_ABSOLUTE_MS);
     await tx.adminSession.create({ data: { adminId: admin.id, tokenHash: adminTokenHash(raw), idleExpiresAt: new Date(now.getTime() + ADMIN_IDLE_MS), absoluteExpiresAt: expiresAt } });

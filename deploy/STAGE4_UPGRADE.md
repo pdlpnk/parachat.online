@@ -1,5 +1,7 @@
 # Stage 4: обновление существующей LINA после review
 
+**Исторический runbook для первого Stage 4.** Текущий password-only login и обновление уже работающего Stage 4 описаны в [PASSWORD_ONLY_UPGRADE.md](PASSWORD_ONLY_UPGRADE.md). CLI теперь спрашивает только пароль.
+
 Ни одна команда здесь не запускалась на production. Работать только с LINA.
 Не повторять первоначальную установку PostgreSQL/Node/Nginx, не менять DNS.
 Сначала подтвердить пользователя, под которым уже работает PM2 LINA, путь его

@@ -1,5 +1,7 @@
 # LINA Stage 4 — Admin Messenger
 
+Исторический отчёт первого Stage 4. Последующее изменение: password-only `/admin`, один внутренний DB Admin, CLI спрашивает только пароль; схема и защищённые sessions сохранены. Проверки password-only: lint/typecheck/build, 26 unit, 59 DB, 54 Admin HTTP, 104 Player HTTP и identity smoke — PASS; браузер: одно поле, неверный/верный пароль, reload и logout; CLI: скрытый ввод без email/имени. См. [password-only upgrade](../deploy/PASSWORD_ONLY_UPGRADE.md).
+
 2026-09-10. Реализация и проверки только в Chat WEB. Production не подключался и не изменялся.
 
 1. **Реализовано.** Отдельный Admin Messenger: список/история, Active/Archive, поиск, unread, OPERATOR send, read markers, tags, mobile back. Player identity и permanent Conversation сохранены.
