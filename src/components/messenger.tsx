@@ -15,10 +15,10 @@ export function SendIcon() {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 7-7 7 7M12 5v14" /></svg>;
 }
 
-export function MessageBubble({ message }: { message: MessageView }) {
-  return <li className={`message-row message-${message.kind.toLowerCase()}`}>
+export function MessageBubble({ message, perspective = "player" }: { message: MessageView; perspective?: "player" | "admin" }) {
+  return <li className={`message-row message-${message.kind.toLowerCase()}${perspective === "admin" ? " admin-bubble" : ""}`}>
     {message.kind !== "USER" && <BrandMark small />}
-    <article className="message-bubble" aria-label={message.kind === "USER" ? "Вы" : message.kind === "OPERATOR" ? "Менеджер" : "Сообщение LINA"}>
+    <article className="message-bubble" aria-label={message.kind === "USER" ? (perspective === "admin" ? "Клиент" : "Вы") : message.kind === "OPERATOR" ? "Менеджер" : "Сообщение LINA"}>
       {message.kind === "SYSTEM" && <p className="bubble-eyebrow">LINA</p>}
       <p className="message-text">{message.text}</p>
       {message.time && <span className="message-time">{message.time}</span>}

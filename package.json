@@ -7,6 +7,7 @@
   "packageManager": "pnpm@11.19.0",
   "engines": { "node": ">=24.0.0 <25", "pnpm": ">=11 <12" },
   "scripts": {
+    "admin:create": "node --import tsx scripts/create-admin.ts",
     "dev": "next dev --hostname 127.0.0.1",
     "build": "prisma generate && next build && node scripts/prepare-standalone.mjs",
     "start": "HOSTNAME=127.0.0.1 node .next/standalone/server.js",

@@ -2,7 +2,7 @@
 
 **Product:** LINA. **Repository/project:** Chat WEB (`chat-web`).
 
-Independent chat-only application. Stage 3 Player Messenger is implemented: name → permanent client/conversation → real text send, polling and read state. Palette and logo are not finalized.
+Independent chat-only application. Player Messenger and Stage 4 Admin Messenger are implemented: name → permanent client/conversation → real text send, polling and read state. Palette and logo are not finalized.
 
 ## Development
 
@@ -107,7 +107,7 @@ Full Stage 2 results: [Player Identity report](docs/LINA_PLAYER_IDENTITY_REPORT.
 ## Stage 2.5 — Messenger UI
 
 The current presentation includes a manager-focused header, three bubble styles, a live player composer and matching
-name landing. Stage 3 activates sending/polling/read; Admin functionality is not implemented. `/dev/messenger` shows render-only design
+name landing. Stage 3 activates sending/polling/read; Admin Messenger is available at `/admin` with a separate CLI-created account. `/dev/messenger` shows render-only design
 fixtures in development and returns 404 in production. See [UI/UX report](docs/LINA_MESSENGER_UI_REPORT.md).
 
 ## Stage 3 verification
@@ -115,3 +115,12 @@ fixtures in development and returns 404 in production. See [UI/UX report](docs/L
 After build, run `tests/http/messages-smoke.mjs` with the same disposable DB environment as the identity smoke.
 The runtime forces PostgreSQL connection sessions to UTC; it does not modify the cluster timezone.
 Unsent drafts/retry keys live only in the current tab and do not survive reload.
+
+## Stage 4 Admin Messenger
+
+See [Admin contract and verification](docs/LINA_ADMIN_MESSENGER_REPORT.md) and
+[future production upgrade](deploy/STAGE4_UPGRADE.md). No production deployment was performed.
+Create the first administrator interactively with `pnpm admin:create` using the intended DATABASE_URL.
+Password input is hidden; no password arguments or public signup endpoint exist.
+
+Local HTTP suite (disposable test DB only): `node --import tsx tests/http/admin-smoke.ts`.

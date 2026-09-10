@@ -9,6 +9,7 @@ map $request_method $lina_write_ip {
 limit_req_zone $binary_remote_addr zone=lina_general:10m rate=20r/s;
 limit_req_zone $lina_write_ip zone=lina_start:1m rate=10r/m;
 limit_req_zone $lina_write_ip zone=lina_send:10m rate=60r/m;
+limit_req_zone $lina_write_ip zone=lina_admin_login:1m rate=5r/m;
 limit_conn_zone $binary_remote_addr zone=lina_connections:10m;
 
 server {
@@ -69,6 +70,12 @@ server {
     proxy_next_upstream off;
     proxy_cache off;
 
+    location = /api/admin/login {
+        client_max_body_size 2k;
+        limit_req zone=lina_general burst=40 nodelay;
+        limit_req zone=lina_admin_login burst=5 nodelay;
+        proxy_pass http://127.0.0.1:3107;
+    }
     location = /api/player/bootstrap {
         limit_req zone=lina_general burst=40 nodelay;
         limit_req zone=lina_start burst=10 nodelay;

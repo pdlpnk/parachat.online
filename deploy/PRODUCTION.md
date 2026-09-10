@@ -1,4 +1,6 @@
-# LINA — production deployment preparation (без deployment)
+# LINA — initial production deployment preparation (исторический runbook)
+
+Для обновления существующего Stage 3 до Admin Messenger используйте [STAGE4_UPGRADE.md](STAGE4_UPGRADE.md). Нижний runbook описывает первоначальную установку; не повторять его поверх работающего сервера.
 
 Подготовлено 2026-09-09. Продуктовая логика, зависимости, schema и migrations не изменены. Stage 4/Admin не начаты. Ни одна команда ниже не выполнялась на сервере: это runbook для отдельного явно подтверждённого запуска.
 

@@ -100,6 +100,7 @@ model Message {
   @@unique([conversationId, sequence])
   @@unique([id, conversationId])
   @@index([conversationId, authorType, createdAt])
+  @@index([adminAuthorId, createdAt])
 }
 
 model Attachment {
@@ -187,4 +188,11 @@ model AdminConversationRead {
 
   @@id([conversationId, adminId])
   @@index([adminId])
+}
+
+// One fixed global login bucket; failed attempts never create unbounded rows.
+model AdminLoginThrottle {
+  id              Int      @id
+  windowStartedAt DateTime @db.Timestamptz(3)
+  attempts        Int
 }

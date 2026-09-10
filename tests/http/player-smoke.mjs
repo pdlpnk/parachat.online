@@ -87,8 +87,8 @@ try {
   const revokedCleanup = await request('/api/player/bootstrap', { method: 'POST', cookie: `${clientCookie}; ${bootstrap}` });
   assert.ok(cookie(revokedCleanup, '__Host-lina_bootstrap'));
   assert.notEqual(cookie(revokedCleanup, '__Host-lina_bootstrap'), bootstrap);
-  for (const path of ['/api/messages', '/api/admin/login', `/api/client?liId=${li}`]) assert.equal((await request(path, { method: 'POST', body: {} })).status, 404);
-  console.log('PASS: production HTTP flow, two-process parallel/lost-response retry, cookie flags, SSR escaping, DTO secrecy, invalid-cookie cleanup, origin enforcement, DB invariants, health and absent legacy/admin routes.');
+  for (const path of ['/api/messages', '/api/admin/signup', `/api/client?liId=${li}`]) assert.equal((await request(path, { method: 'POST', body: {} })).status, 404);
+  console.log('PASS: production HTTP flow, two-process parallel/lost-response retry, cookie flags, SSR escaping, DTO secrecy, invalid-cookie cleanup, origin enforcement, DB invariants, health and absent legacy/signup routes.');
 } finally {
   await pool.end();
   await Promise.all(servers.map((child) => new Promise((resolve) => { if (child.exitCode !== null) return resolve(); child.once('exit', resolve); child.kill('SIGTERM'); })));
