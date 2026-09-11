@@ -1,5 +1,5 @@
 import type { MessageDTO } from './messages';
-export type TagDTO = { id: string; name: string };
+export type TagDTO = { id: string; name: string; color: string };
 export type ConversationDTO = { id: string; displayName: string; liId: string; avatarEmoji: string; active: boolean; closed: boolean; lastMessageAt: string | null; preview: string; unread: number; tags: TagDTO[] };
 export type AdminList = { conversations: ConversationDTO[]; total: number; unread: number; page: number };
 export type AdminDetail = { conversation: ConversationDTO; messages: MessageDTO[]; readSequence: number; unreadCount: number; hasMore: boolean };

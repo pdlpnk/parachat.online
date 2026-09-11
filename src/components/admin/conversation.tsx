@@ -1,4 +1,7 @@
 "use client";
+import { ConversationTags } from './tags';
+import { ATTACHMENT_ACCEPT, ATTACHMENT_LIMIT } from '@/lib/attachments';
+import { AttachmentPreview } from '@/components/attachment-preview';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { AdminDetail, ConversationDTO } from "@/lib/admin";
 import { AttachmentIcon, MessageBubble, SendIcon } from "../messenger";
@@ -7,7 +10,7 @@ import { createPoller, type MessageBatch } from "@/lib/polling";
 const subscribe = () => () => {};
 class RequestError extends Error { constructor(public status: number, message: string) { super(message); } }
 async function request<T>(url: string, options: RequestInit): Promise<T> {
-  const signal = AbortSignal.any([AbortSignal.timeout(10000), ...(options.signal ? [options.signal] : [])]);
+  const signal = AbortSignal.any([AbortSignal.timeout(options.body instanceof FormData ? 60000 : 10000), ...(options.signal ? [options.signal] : [])]);
   const result = await fetch(url, { ...options, signal, cache: "no-store", credentials: "same-origin" });
   if (!result.ok) {
     const body = await result.json().catch(() => ({}));
@@ -15,13 +18,14 @@ async function request<T>(url: string, options: RequestInit): Promise<T> {
   }
   return result.json() as Promise<T>;
 }
-type Attempt = { key: string; text: string };
-export function AdminConversation({ id, initial, onUpdate, onBack, onTags }: { id: string; initial: AdminDetail; onUpdate: (conversation: ConversationDTO) => void; onBack: () => void; onTags: () => void }) {
+type Attempt = { key: string; text: string; file?: File };
+export function AdminConversation({ id, initial, onUpdate, onBack }: { id: string; initial: AdminDetail; onUpdate: (conversation: ConversationDTO) => void; onBack: () => void }) {
   const initialMessages = initial.messages;
   const [conversation, setConversation] = useState(initial.conversation);
   const [stateBusy,setStateBusy] = useState(false);
   const hydrated = useSyncExternalStore(subscribe, () => true, () => false);
   const [messages, setMessages] = useState(initialMessages);
+  const [file,setFile] = useState<File|undefined>(); const picker=useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState(""); const draftRef = useRef("");
   const [failedAttempt, setFailedAttempt] = useState<Attempt | null>(null);
   const [sending, setSending] = useState(false), [error, setError] = useState("");
@@ -99,20 +103,24 @@ export function AdminConversation({ id, initial, onUpdate, onBack, onTags }: { i
   }, [sending]);
   async function send(retry = false) {
     if (inFlight.current || expired) return;
-    const text = retry ? attempt.current?.text : normalizeMessage(draftRef.current);
-    if (!text) { setError("Введите сообщение от 1 до 5000 символов."); return; }
-    const logical = attempt.current?.text === text ? attempt.current : { key: crypto.randomUUID(), text };
+    const selectedFile=retry?attempt.current?.file:file;
+    const text = retry ? attempt.current?.text : selectedFile&&!draftRef.current.trim()?"":normalizeMessage(draftRef.current);
+    if (text===null||text===undefined||(!text&&!selectedFile)) { setError("Введите сообщение от 1 до 5000 символов."); return; }
+    const logical = attempt.current?.text === text && attempt.current.file===selectedFile ? attempt.current : { key: crypto.randomUUID(), text, file:selectedFile };
     attempt.current = logical; restoreFocus.current = true; inFlight.current = true; setSending(true); setError(""); setFailedAttempt(null);
     const controller = new AbortController(); sendController.current = controller;
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), logical.file?60000:15000);
     try {
-      const result = await request<{ message: MessageDTO }>(`/api/admin/conversations/${id}/messages`, { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": logical.key }, body: JSON.stringify({ text: logical.text }), signal: controller.signal });
+      let body:BodyInit;let headers:Record<string,string>={'Idempotency-Key':logical.key};
+      if(logical.file){const form=new FormData();form.set('text',logical.text);form.set('file',logical.file);body=form;}else{headers={...headers,'Content-Type':'application/json'};body=JSON.stringify({text:logical.text});}
+      const result = await request<{ message: MessageDTO }>(`/api/admin/conversations/${id}/${logical.file?"attachments":"messages"}`, {method:'POST',headers,body,signal:controller.signal});
       if (!alive.current) return;
       forceBottom.current = true; setMessages(current => mergeMessages(current, [result.message]));
       // A poll can already have delivered the same message, so also scroll explicitly on confirmation.
       if (history.current) history.current.scrollTop = history.current.scrollHeight;
       nearBottom.current = true; setNewMessages(false);
-      if (normalizeMessage(draftRef.current) === logical.text) { draftRef.current = ""; setDraft(""); }
+      if ((normalizeMessage(draftRef.current)??"") === logical.text) { draftRef.current = ""; setDraft(""); }
+      if(file===logical.file)setFile(undefined);
       attempt.current = null; scheduleRead();
     } catch (e) {
       if (!alive.current) return;
@@ -120,12 +128,12 @@ export function AdminConversation({ id, initial, onUpdate, onBack, onTags }: { i
     } finally { clearTimeout(timeout); inFlight.current = false; if (alive.current) { setSending(false); } }
   }
   return <section className="admin-conversation" aria-label="Выбранный диалог">
-    <header className="chat-header admin-detail-header"><button type="button" className="admin-back" onClick={onBack} aria-label="К списку диалогов">←</button><span className="client-emoji" aria-hidden="true">{conversation.avatarEmoji}</span><div className="chat-heading"><h2>{conversation.displayName}</h2><p>{conversation.liId} · {conversation.active ? 'Active' : 'Archive'}</p></div><div className="admin-detail-actions"><button type="button" onClick={onTags}>Теги</button><button type="button" disabled={stateBusy || expired} onClick={async()=>{
+    <header className="chat-header admin-detail-header"><button type="button" className="admin-back" onClick={onBack} aria-label="К списку диалогов">←</button><span className="client-emoji" aria-hidden="true">{conversation.avatarEmoji}</span><div className="chat-heading"><h2>{conversation.displayName}</h2><p>{conversation.liId} · {conversation.active ? 'Active' : 'Archive'}</p></div><div className="admin-detail-actions"><button type="button" disabled={stateBusy || expired} onClick={async()=>{
       if(stateBusy)return;setStateBusy(true);setError('');
       try { await request(`/api/admin/conversations/${id}/state`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({closed:!conversation.closed})}); const data=await request<AdminDetail>(`/api/admin/conversations/${id}/messages`,{});if(alive.current){setConversation(data.conversation);onUpdate(data.conversation);} }
       catch(e){if(alive.current&&!sessionFailure(e))setError(e instanceof Error?e.message:'Не удалось изменить состояние.');}finally{if(alive.current)setStateBusy(false);}
     }}>{conversation.closed?'Открыть':'В архив'}</button></div></header>
-    <div className="admin-detail-tags">{conversation.tags.map(tag=><span className="tag-chip" key={tag.id}>{tag.name}</span>)}</div>
+    <ConversationTags conversation={conversation} onChange={tags=>{const updated={...conversation,tags};setConversation(updated);onUpdate(updated);}}/>
     {expired ? <aside className="chat-status" role="alert">Сессия администратора завершена. <a href="/admin">Войти снова</a></aside> : offline && <aside className="chat-status" role="status">Не удаётся обновить чат. Повторяем подключение…</aside>}
     <section ref={history} className="messages" aria-label="Сообщения" tabIndex={0} onScroll={() => {
       const el = history.current!;
@@ -135,16 +143,18 @@ export function AdminConversation({ id, initial, onUpdate, onBack, onTags }: { i
       else nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight <= 80;
       historySize.current = { height: el.clientHeight, content: el.scrollHeight };
       if (nearBottom.current) { setNewMessages(false); scheduleRead(); }
-    }}><div className="history-content"><ol className="message-list">{messages.map(message => <MessageBubble key={message.sequence} perspective="admin" message={{ id: String(message.sequence), kind: message.authorType, text: message.text, time: hydrated ? localMessageTime(message.createdAt) : undefined }} />)}</ol></div></section>
+    }}><div className="history-content"><ol className="message-list">{messages.map(message => <MessageBubble key={message.sequence} perspective="admin" message={{ id: String(message.sequence), kind: message.authorType, text: message.text, attachments:message.attachments, time: hydrated ? localMessageTime(message.createdAt) : undefined }} />)}</ol></div></section>
     {newMessages && <button className="new-messages" onClick={() => { if (history.current) history.current.scrollTop = history.current.scrollHeight; nearBottom.current = true; setNewMessages(false); scheduleRead(); }}>Новые сообщения{unread > 0 ? ` · ${unread}` : ""} ↓</button>}
     <footer className="composer" aria-label="Написать сообщение" aria-busy={sending}><form onSubmit={e => { e.preventDefault(); void send(); }}>
+      {file&&<AttachmentPreview file={file} onRemove={()=>setFile(undefined)} disabled={sending}/> }
       <div className={`composer-field${error ? " composer-error" : ""}`}>
-        <button className="icon-button attachment-button" type="button" disabled aria-label="Прикрепить файл — пока недоступно"><AttachmentIcon /></button>
+        <input ref={picker} type="file" hidden accept={ATTACHMENT_ACCEPT} aria-label="Выбрать вложение" onChange={e=>{const selected=e.target.files?.[0];e.target.value='';if(selected){if(selected.size>ATTACHMENT_LIMIT){setError('Файл должен быть не больше 10 MiB.');return;}setFile(selected);setError('');}}}/>
+        <button className="icon-button attachment-button" type="button" disabled={sending||expired} onClick={()=>picker.current?.click()} aria-label="Прикрепить файл"><AttachmentIcon /></button>
         <label className="sr-only" htmlFor="message-draft">Ваше сообщение</label>
         <textarea ref={textarea} id="message-draft" rows={1} placeholder="Напишите сообщение…" value={draft} disabled={sending || expired} aria-describedby="composer-note" onChange={e => { draftRef.current = e.target.value; setDraft(e.target.value); }} onKeyDown={e => {
           if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); void send(); }
         }} />
-        <button className="icon-button send-button" type="submit" disabled={sending || expired || !normalizeMessage(draft)} aria-label="Отправить сообщение"><SendIcon /></button>
+        <button className="icon-button send-button" type="submit" disabled={sending || expired || (!normalizeMessage(draft)&&!file)} aria-label="Отправить сообщение"><SendIcon /></button>
       </div>
       <p id="composer-note" className="composer-note" role={error ? "alert" : "status"}>{sending ? "Отправляем…" : error || "Enter — отправить · Shift+Enter — новая строка"}</p>
       {error && failedAttempt && normalizeMessage(draft) !== failedAttempt.text && <p className="failed-preview">Не подтверждено: {failedAttempt.text.slice(0, 120)}{failedAttempt.text.length > 120 ? "…" : ""}</p>}

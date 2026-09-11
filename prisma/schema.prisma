@@ -150,6 +150,7 @@ model AdminSession {
 }
 
 model AdminTag {
+  color          String   @default("gray") @db.VarChar(12)
   id             String   @id @default(uuid()) @db.Uuid
   name           String   @db.VarChar(60)
   normalizedName String   @unique @db.VarChar(60)

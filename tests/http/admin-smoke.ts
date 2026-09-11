@@ -41,9 +41,9 @@ try{
  const detail=await check(base+'/messages',{cookie:admin},200);assert.equal(detail.unreadCount,1);assert.equal(detail.conversation.active,true);
  await check(base+'/read',{method:'POST',cookie:admin,body:{sequence:3}},200);
  await check(base+'/state',{method:'POST',cookie:admin,body:{closed:true}},200);
- const tag=await check('/api/admin/tags',{method:'POST',cookie:admin,body:{name:'HTTP '+randomUUID()}},200);
+ const tag=await check('/api/admin/tags',{method:'POST',cookie:admin,body:{name:'HTTP '+randomUUID(),color:'blue'}},200);
  await check(base+'/tags',{method:'POST',cookie:admin,body:{tagId:tag.id,attached:true}},200);
- await check('/api/admin/tags/'+tag.id,{method:'PATCH',cookie:admin,body:{name:'Renamed '+randomUUID()}},200);
+ await check('/api/admin/tags/'+tag.id,{method:'PATCH',cookie:admin,body:{name:'Renamed '+randomUUID(),color:'blue'}},200);
  assert.equal((await check('/api/admin/conversations?state=archive&tag='+tag.id,{cookie:admin},200)).total,1);
  await check('/api/admin/tags/'+tag.id,{method:'DELETE',cookie:admin,body:{}},200);
  await check('/api/admin/logout',{method:'POST',cookie:admin,body:{}},200);await check(base+'/messages',{cookie:admin},401);

@@ -1,3 +1,5 @@
+import { sameAttachment, type StoredAttachment } from "../attachments/validation";
+import { validTagColor } from "../../lib/tag-colors";
 import { Prisma, type PrismaClient } from '../../generated/prisma/client';
 import { adminSearch, tagName, validUuid, type AdminList, type ConversationDTO } from '../../lib/admin';
 import { normalizeMessage, validMessageKey, validSequence } from '../../lib/messages';
@@ -6,7 +8,7 @@ import { messageDTO, messageSelect } from '../messages/dto';
 import { authenticateAdmin, txOptions } from './auth';
 const notFound = () => new StartError(404, 'Диалог или тег не найден.');
 function requireId(id: string) { if (!validUuid(id)) throw notFound(); }
-const clientSelect = { displayName: true, liId: true, avatarEmoji: true, tags: { select: { tag: { select: { id: true, name: true } } }, orderBy: { tag: { name: 'asc' as const } } } };
+const clientSelect = { displayName: true, liId: true, avatarEmoji: true, tags: { select: { tag: { select: { id: true, name: true, color:true } } }, orderBy: { tag: { name: 'asc' as const } } } };
 export async function listConversations(db: PrismaClient, raw: string | undefined, options: { state: string; q?: string; tag?: string; page?: number }): Promise<AdminList> {
   const { state, tag } = options, page = options.page ?? 0, q = adminSearch(options.q);
   if (!['active','archive'].includes(state) || !Number.isInteger(page) || page < 0 || page > 100000) throw new StartError(400, 'Некорректный фильтр.');
@@ -28,8 +30,8 @@ export async function listConversations(db: PrismaClient, raw: string | undefine
       ), selected AS (SELECT * FROM filtered ORDER BY "lastMessageAt" DESC NULLS LAST, id DESC LIMIT 50 OFFSET ${page*50}),
       rows AS (
         SELECT s.id,s."displayName",s."liId",s."avatarEmoji",s.active,s.closed,s."lastMessageAt",s.unread,
-          COALESCE((SELECT left(m.body,160) FROM "Message" m WHERE m."conversationId"=s.id AND m."authorType" IN ('USER','OPERATOR') ORDER BY m.sequence DESC LIMIT 1),'Новый контакт') AS preview,
-          COALESCE((SELECT jsonb_agg(jsonb_build_object('id',t.id,'name',t.name) ORDER BY t.name) FROM "ClientTag" ct JOIN "AdminTag" t ON t.id=ct."tagId" WHERE ct."clientId"=s."clientId"),'[]'::jsonb) AS tags
+          COALESCE((SELECT COALESCE(NULLIF(left(m.body,160),''),'Вложение') FROM "Message" m WHERE m."conversationId"=s.id AND m."authorType" IN ('USER','OPERATOR') ORDER BY m.sequence DESC LIMIT 1),'Новый контакт') AS preview,
+          COALESCE((SELECT jsonb_agg(jsonb_build_object('id',t.id,'name',t.name,'color',t.color) ORDER BY t.name) FROM "ClientTag" ct JOIN "AdminTag" t ON t.id=ct."tagId" WHERE ct."clientId"=s."clientId"),'[]'::jsonb) AS tags
         FROM selected s
       ) SELECT COALESCE((SELECT jsonb_agg(to_jsonb(rows) ORDER BY "lastMessageAt" DESC NULLS LAST,id DESC) FROM rows),'[]'::jsonb) AS items,
         (SELECT count(*)::int FROM filtered) AS total, (SELECT COALESCE(sum(unread),0)::int FROM filtered) AS unread`);
@@ -50,22 +52,23 @@ export async function adminHistory(db: PrismaClient, raw: string | undefined, id
     return { conversation, messages: (after === undefined ? messages.reverse() : messages.slice(0,100)).map(messageDTO), hasMore: after !== undefined && messages.length>100, readSequence, unreadCount };
   }, txOptions);
 }
-export async function adminSend(db: PrismaClient, raw: string | undefined, id: string, input: unknown, key: unknown) {
-  requireId(id); const text = normalizeMessage(input);
-  if (!text || !validMessageKey(key)) throw new StartError(400, 'Введите 1–5000 символов и корректный ключ отправки.');
+export async function adminSend(db: PrismaClient, raw: string | undefined, id: string, input: unknown, key: unknown, file?: StoredAttachment) {
+  requireId(id); const text = file && input === "" ? "" : normalizeMessage(input);
+  if (text === null || !validMessageKey(key)) throw new StartError(400, 'Введите 1–5000 символов и корректный ключ отправки.');
   return db.$transaction(async tx => {
     const admin = await authenticateAdmin(tx, raw, true);
     await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`LINA.admin.send:${admin.id}`},0))::text`;
     const [v] = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Conversation" WHERE id=${id}::uuid FOR UPDATE`;
     if (!v) throw notFound();
-    const existing = await tx.message.findUnique({ where: { conversationId_idempotencyKey: { conversationId: id, idempotencyKey: key } } });
+    const existing = await tx.message.findUnique({ where: { conversationId_idempotencyKey: { conversationId: id, idempotencyKey: key } }, include: { attachments: true } });
     if (existing) {
-      if (existing.authorType !== 'OPERATOR' || existing.adminAuthorId !== admin.id || existing.body !== text) throw new StartError(409, 'Ключ уже использован для другого сообщения.');
+      if (existing.authorType !== 'OPERATOR' || existing.adminAuthorId !== admin.id || existing.body !== text || !sameAttachment(existing.attachments,file)) throw new StartError(409, 'Ключ уже использован для другого сообщения.');
       return messageDTO(existing);
     }
     const [clock] = await tx.$queryRaw<{ now: Date; createdAt: Date }[]>`SELECT clock_timestamp() AS now,GREATEST(clock_timestamp(),COALESCE("lastMessageAt",'-infinity'::timestamptz))::timestamptz(3) AS "createdAt" FROM "Conversation" WHERE id=${id}::uuid`;
     if (await tx.message.count({ where: { adminAuthorId: admin.id, createdAt: { gte: new Date(clock!.now.getTime()-60000) } } }) >= 60) throw new StartError(429, 'Слишком много сообщений. Повторите через минуту.');
-    const saved = await tx.message.create({ data: { conversationId: id, authorType: 'OPERATOR', adminAuthorId: admin.id, body: text, idempotencyKey: key, createdAt: clock!.createdAt }, select: messageSelect });
+    const saved = await tx.message.create({ data: { conversationId: id, authorType: 'OPERATOR', adminAuthorId: admin.id, body: text, idempotencyKey: key, createdAt: clock!.createdAt }, select: { ...messageSelect, id:true } });
+    if(file){const attached=await tx.attachment.create({data:{...file,messageId:saved.id,conversationId:id}});saved.attachments=[attached];}
     // Replying in Archive is allowed but does not silently reopen or activate a contact.
     await tx.$executeRaw`UPDATE "Conversation" SET "lastMessageAt"=${saved.createdAt},"updatedAt"=${saved.createdAt} WHERE id=${id}::uuid`;
     return messageDTO(saved);
@@ -91,10 +94,11 @@ export async function setArchive(db: PrismaClient, raw: string | undefined, id: 
   }, txOptions);
 }
 export async function listTags(db: PrismaClient, raw: string | undefined) {
-  return db.$transaction(async tx => { await authenticateAdmin(tx,raw); return tx.adminTag.findMany({ select: { id:true,name:true }, orderBy: { name:'asc' } }); },txOptions);
+  return db.$transaction(async tx => { await authenticateAdmin(tx,raw); return tx.adminTag.findMany({ select: { id:true,name:true,color:true }, orderBy: { name:'asc' } }); },txOptions);
 }
-export async function changeTag(db: PrismaClient, raw: string | undefined, action: 'create'|'rename'|'delete', id?: string, input?: unknown) {
+export async function changeTag(db: PrismaClient, raw: string | undefined, action: 'create'|'rename'|'delete', id?: string, input?: unknown, color?: unknown) {
   if (action !== 'create') requireId(id!);
+  if(color!==undefined&&!validTagColor(color))throw new StartError(400,'Некорректный цвет тега.');
   const name = action === 'delete' ? null : tagName(input);
   if (action !== 'delete' && !name) throw new StartError(400,'Название тега: 1–60 символов.');
   try {
@@ -104,11 +108,11 @@ export async function changeTag(db: PrismaClient, raw: string | undefined, actio
       if (name) { const [normalized] = await tx.$queryRaw<{value:string}[]>`SELECT lower(${name.name} COLLATE lina_unicode) AS value`; name.normalizedName = normalized!.value; }
       if (action==='create') {
         if (await tx.adminTag.count() >= 200) throw new StartError(400,'Достигнут лимит 200 тегов.');
-        return tx.adminTag.create({ data:name!, select:{id:true,name:true} });
+        return tx.adminTag.create({ data:{...name!,...(color!==undefined?{color:color as string}:{})}, select:{id:true,name:true,color:true} });
       }
       if (!await tx.adminTag.findUnique({where:{id}})) throw notFound();
       if (action==='delete') { await tx.adminTag.delete({where:{id}}); return {ok:true}; }
-      return tx.adminTag.update({where:{id},data:name!,select:{id:true,name:true}});
+      return tx.adminTag.update({where:{id},data:{...name!,...(color!==undefined?{color:color as string}:{})},select:{id:true,name:true,color:true}});
     },txOptions);
   } catch (e) { if (e instanceof Prisma.PrismaClientKnownRequestError && e.code==='P2002') throw new StartError(409,'Тег с таким названием уже существует.'); throw e; }
 }

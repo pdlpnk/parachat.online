@@ -1,5 +1,6 @@
+import type { AttachmentDTO } from "./attachments";
 export const MESSAGE_LIMIT = 5000;
-export type MessageDTO = { sequence: number; authorType: "USER" | "OPERATOR" | "SYSTEM"; text: string; createdAt: string };
+export type MessageDTO = { attachments?: AttachmentDTO[]; sequence: number; authorType: "USER" | "OPERATOR" | "SYSTEM"; text: string; createdAt: string };
 export function normalizeMessage(input: unknown): string | null {
   if (typeof input !== "string" || input.length > 20000) return null;
   const text = input.replace(/\r\n?/g, "\n").trim().normalize("NFC");

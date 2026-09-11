@@ -55,3 +55,6 @@ credentials.json
 *.swp
 *.swo
 *~
+
+# Private attachment storage must never enter Git.
+/uploads/

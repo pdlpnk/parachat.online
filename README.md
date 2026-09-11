@@ -2,7 +2,10 @@
 
 **Product:** LINA. **Repository/project:** Chat WEB (`chat-web`).
 
-Independent chat-only application. Player Messenger and Stage 4 Admin Messenger are implemented: name → permanent client/conversation → real text send, polling and read state. Palette and logo are not finalized.
+Independent chat-only application. Player and password-only Admin Messenger include Stage 5 private attachments and colored tags: name → permanent client/conversation → messages, attachments, polling and read state. Palette and logo are not finalized.
+
+Stage 5: [implementation report](docs/LINA_STAGE5_REPORT.md), [manual production upgrade](deploy/STAGE5_UPGRADE.md).
+Set an absolute `ATTACHMENT_STORAGE_DIR` outside `public`/`.next` for local uploads.
 
 ## Development
 

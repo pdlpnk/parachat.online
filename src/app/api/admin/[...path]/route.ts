@@ -1,3 +1,4 @@
+import { upload,download } from '@/server/attachments/http';
 import { response, requireOrigin } from '@/server/identity/http';
 import { StartError } from '@/server/identity/service';
 import { messageFailure } from '@/server/messages/http';
@@ -10,6 +11,8 @@ async function handle(request:Request,ctx:Context){
   try {
     const {path}=await ctx.params, method=request.method;
     if(method!=='GET')requireOrigin(request);
+    if(method==='POST'&&path.length===3&&path[0]==='conversations'&&path[2]==='attachments')return await upload(request,true,path[1]);
+    if(method==='GET'&&path.length===2&&path[0]==='attachments')return await download(request,true,path[1]!);
     const context=await adminContext(), query=new URL(request.url).searchParams;
     if(method==='POST' && path.join('/')==='login'){
       const b=await adminBody(request,['password']); const session=await adminLogin(context[0],b.password);
@@ -35,10 +38,10 @@ async function handle(request:Request,ctx:Context){
     }
     if(path[0]==='tags'&&path.length===1){
       if(method==='GET')return response({tags:await listTags(...context)});
-      if(method==='POST'){const b=await adminBody(request,['name']);return response(await changeTag(...context,'create',undefined,b.name));}
+      if(method==='POST'){const b=await adminBody(request,['name','color']);return response(await changeTag(...context,'create',undefined,b.name,b.color));}
     }
     if(path[0]==='tags'&&path.length===2){
-      if(method==='PATCH'){const b=await adminBody(request,['name']);return response(await changeTag(...context,'rename',path[1],b.name));}
+      if(method==='PATCH'){const b=await adminBody(request,['name','color']);return response(await changeTag(...context,'rename',path[1],b.name,b.color));}
       if(method==='DELETE'){await adminBody(request,[]);return response(await changeTag(...context,'delete',path[1]));}
     }
     return response({error:'Не найдено.'},404);

@@ -1,6 +1,9 @@
+/* eslint-disable @next/next/no-img-element -- Private authenticated images must bypass public image optimization. */
+import { fileSize, type AttachmentDTO } from "@/lib/attachments";
 import { BrandMark } from "./brand-mark";
 
 export type MessageView = {
+  attachments?: AttachmentDTO[];
   id: string;
   kind: "SYSTEM" | "OPERATOR" | "USER";
   text: string;
@@ -20,7 +23,13 @@ export function MessageBubble({ message, perspective = "player" }: { message: Me
     {message.kind !== "USER" && <BrandMark small />}
     <article className="message-bubble" aria-label={message.kind === "USER" ? (perspective === "admin" ? "Клиент" : "Вы") : message.kind === "OPERATOR" ? "Менеджер" : "Сообщение LINA"}>
       {message.kind === "SYSTEM" && <p className="bubble-eyebrow">LINA</p>}
-      <p className="message-text">{message.text}</p>
+      {message.text&&<p className="message-text">{message.text}</p>}
+      {message.attachments?.map(a=>{const url=`/api/${perspective}/attachments/${a.id}`;return <div className="message-attachment" key={a.id}>
+        {a.mediaType.startsWith('image/')?<a href={url} target="_blank" rel="noopener noreferrer" aria-label={`Открыть ${a.displayFilename}`}>
+          <img src={url} alt={a.displayFilename} loading="lazy"/></a>:
+          a.mediaType==='video/mp4'?<video src={url} controls preload="metadata" playsInline aria-label={a.displayFilename}/>:<span aria-hidden="true">PDF</span>}
+        <a href={url} target="_blank" rel="noopener noreferrer" className="attachment-link">{a.displayFilename} · {fileSize(a.byteSize)}</a>
+      </div>;})}
       {message.time && <span className="message-time">{message.time}</span>}
     </article>
   </li>;
