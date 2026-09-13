@@ -4,6 +4,8 @@
 
 Independent chat-only application. Player and password-only Admin Messenger include Stage 5 private attachments and colored tags: name → permanent client/conversation → messages, attachments, polling and read state. Palette and logo are not finalized.
 
+Stage 6: [themes, fonts and localization](docs/LINA_STAGE6_REPORT.md), [manual upgrade](deploy/STAGE6_UPGRADE.md).
+
 Stage 5: [implementation report](docs/LINA_STAGE5_REPORT.md), [manual production upgrade](deploy/STAGE5_UPGRADE.md).
 Set an absolute `ATTACHMENT_STORAGE_DIR` outside `public`/`.next` for local uploads.
 

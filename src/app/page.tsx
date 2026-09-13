@@ -13,8 +13,8 @@ export default async function Home() {
   try {
     player = await resolvePlayer(getDatabase(), jar.get(cookiePolicy().client)?.value, getServerEnv().CLIENT_CREDENTIAL_PEPPER);
   } catch {
-    return <main className="landing"><section className="name-card"><h1>LINA</h1><p role="alert">Чат временно недоступен. Обновите страницу через минуту.</p></section></main>;
+    return <NameForm unavailable />;
   }
   if (!player) return <NameForm />;
-  return <PlayerMessenger liId={player.liId} initialMessages={player.messages} />;
+  return <PlayerMessenger liId={player.liId} initialMessages={player.messages} initialPreferences={{theme:player.uiTheme as "light",font:player.uiFont as "modern",locale:player.locale}} />;
 }

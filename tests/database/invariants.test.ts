@@ -95,7 +95,7 @@ test("message ordering is concurrent-safe, per conversation, and idempotency is 
   await assert.rejects(systemMessage(client.conversationId, "same-request"), sqlState("23505"));
   const other = await createClient();
   assert.equal((await systemMessage(other.conversationId)).sequence, 1);
-  await assert.rejects(pool.query('UPDATE "Message" SET sequence=2 WHERE id=$1', [messages[0]!.id]), sqlState("23514"));
+  await assert.rejects(pool.query('UPDATE "Message" SET sequence=99 WHERE id=$1', [messages[0]!.id]), sqlState("23514"));
   const { rows: [conversation] } = await pool.query('SELECT "firstUserMessageAt", "closedAt" FROM "Conversation" WHERE id=$1', [client.conversationId]);
   assert.equal(conversation.firstUserMessageAt, null);
   assert.equal(conversation.closedAt, null);

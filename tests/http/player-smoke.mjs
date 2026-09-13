@@ -29,7 +29,7 @@ try {
     assert.ok(ready, 'local server startup');
   }
   const anonymous = await (await request('/')).text();
-  assert.match(anonymous, /Ваше имя/);
+  assert.match(anonymous, /Your name/);
   assert.doesNotMatch(anonymous, /credentialHash|CLIENT_CREDENTIAL_PEPPER/);
   assert.equal((await request('/dev/messenger')).status, 404, 'design fixtures are unavailable in production');
   assert.ok(!(await (await request('/?preview=messenger')).text()).includes('Дизайн-превью'));
@@ -65,16 +65,16 @@ try {
   const replay = await request('/api/player/start', { method: 'POST', cookie: bootstrap, body: { displayName: '<b>Smoke Роман</b>' } });
   assert.equal(cookie(replay, '__Host-lina_client'), clientCookie);
   const rendered = await (await request('/', { cookie: clientCookie })).text();
-  assert.doesNotMatch(rendered, /Ваше имя/);
+  assert.doesNotMatch(rendered, /Your name/);
   assert.match(rendered, /&lt;b&gt;Smoke Роман&lt;\/b&gt;/);
   assert.ok(!rendered.includes(raw)); assert.ok(!rendered.includes(pepper));
   assert.doesNotMatch(rendered, /credentialHash|adminAuthorId|passwordHash/);
   const li = rendered.match(/LI[0-9]{6}/)[0];
   assert.ok((await (await request('/', { cookie: clientCookie, port: 55442 })).text()).includes(li));
-  assert.match(await (await request(`/?liId=${li}`)).text(), /Ваше имя/);
+  assert.match(await (await request(`/?liId=${li}`)).text(), /Your name/);
   for (const token of ['malformed', li, randomBytes(32).toString('base64url')]) {
     const badCookie = `__Host-lina_client=${token}`;
-    assert.match(await (await request('/', { cookie: badCookie })).text(), /Ваше имя/);
+    assert.match(await (await request('/', { cookie: badCookie })).text(), /Your name/);
     const cleanup = await request('/api/player/bootstrap', { method: 'POST', cookie: badCookie });
     assert.ok(cleanup.headers.getSetCookie().some((v) => v.startsWith('__Host-lina_client=;') && /Max-Age=0/.test(v)));
   }
@@ -82,7 +82,7 @@ try {
   assert.equal(row.messages, 1); assert.equal(row.lastSequence, 1); assert.equal(row.firstUserMessageAt, null);
   assert.notEqual(row.credentialHash, raw); assert.ok(!rendered.includes(row.credentialHash));
   await pool.query('UPDATE "ClientCredential" SET "revokedAt"=now() WHERE "clientId"=$1', [row.id]);
-  assert.match(await (await request('/', { cookie: clientCookie })).text(), /Ваше имя/);
+  assert.match(await (await request('/', { cookie: clientCookie })).text(), /Your name/);
   assert.equal((await request('/api/player/start', { method: 'POST', cookie: bootstrap, body: { displayName: '<b>Smoke Роман</b>' } })).status, 409);
   const revokedCleanup = await request('/api/player/bootstrap', { method: 'POST', cookie: `${clientCookie}; ${bootstrap}` });
   assert.ok(cookie(revokedCleanup, '__Host-lina_bootstrap'));

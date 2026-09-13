@@ -1,4 +1,8 @@
 "use client";
+import {PlayerSettings} from "./player-settings";
+import {DEFAULT_PREFERENCES,type Preferences} from "@/lib/preferences";
+import {WORDS,playerError} from "@/lib/player-i18n";
+import {systemText} from "@/lib/player";
 import { ATTACHMENT_ACCEPT, ATTACHMENT_LIMIT } from '@/lib/attachments';
 import { AttachmentPreview } from '@/components/attachment-preview';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -18,7 +22,15 @@ async function request<T>(url: string, options: RequestInit): Promise<T> {
   return result.json() as Promise<T>;
 }
 type Attempt = { key: string; text: string; file?: File };
-export function PlayerMessenger({ liId, initialMessages }: { liId: string; initialMessages: MessageDTO[] }) {
+export function PlayerMessenger({ liId, initialMessages, initialPreferences=DEFAULT_PREFERENCES }: { liId: string; initialMessages: MessageDTO[]; initialPreferences?:Preferences }) {
+  const [preferences,setPreferences]=useState(initialPreferences);const t=WORDS[preferences.locale];
+  const root=useRef<HTMLElement>(null);
+  useEffect(()=>{
+    const viewport=window.visualViewport;if(!viewport)return;
+    const resize=()=>{if(viewport.scale===1)root.current?.style.setProperty("--player-height",`${viewport.height}px`);};
+    resize();viewport.addEventListener("resize",resize);
+    return()=>viewport.removeEventListener("resize",resize);
+  },[]);
   const hydrated = useSyncExternalStore(subscribe, () => true, () => false);
   const [messages, setMessages] = useState(initialMessages);
   const [file,setFile] = useState<File|undefined>(); const picker=useRef<HTMLInputElement>(null);
@@ -100,7 +112,7 @@ export function PlayerMessenger({ liId, initialMessages }: { liId: string; initi
     if (inFlight.current || expired) return;
     const selectedFile=retry?attempt.current?.file:file;
     const text = retry ? attempt.current?.text : selectedFile&&!draftRef.current.trim()?"":normalizeMessage(draftRef.current);
-    if (text===null||text===undefined||(!text&&!selectedFile)) { setError("Введите сообщение от 1 до 5000 символов."); return; }
+    if (text===null||text===undefined||(!text&&!selectedFile)) { setError("length"); return; }
     const logical = attempt.current?.text === text && attempt.current.file===selectedFile ? attempt.current : { key: crypto.randomUUID(), text, file:selectedFile };
     attempt.current = logical; restoreFocus.current = true; inFlight.current = true; setSending(true); setError(""); setFailedAttempt(null);
     const controller = new AbortController(); sendController.current = controller;
@@ -119,13 +131,13 @@ export function PlayerMessenger({ liId, initialMessages }: { liId: string; initi
       attempt.current = null; scheduleRead();
     } catch (e) {
       if (!alive.current) return;
-      if (!sessionFailure(e)) { setFailedAttempt(logical); setError(e instanceof RequestError ? e.message : "Не удалось подтвердить отправку. Повторите попытку — сообщение не продублируется."); }
+      if (!sessionFailure(e)) { setFailedAttempt(logical); setError(e instanceof RequestError ? String(e.status) : "uncertain"); }
     } finally { clearTimeout(timeout); inFlight.current = false; if (alive.current) { setSending(false); } }
   }
-  return <main className="messenger-shell" aria-label="Ваш чат"><div className="messenger">
-    <header className="chat-header"><BrandMark /><div className="chat-heading"><h1>LINA</h1><p>Персональный менеджер</p></div><div className="client-reference"><span>Ваш ID</span><p>{liId}</p></div></header>
-    {expired ? <aside className="chat-status" role="alert">Сессия завершена. <button onClick={() => location.reload()}>Обновить страницу</button></aside> : offline && <aside className="chat-status" role="status">Не удаётся обновить чат. Повторяем подключение…</aside>}
-    <section ref={history} className="messages" aria-label="Сообщения" tabIndex={0} onScroll={() => {
+  return <main ref={root} className="messenger-shell player-root" data-theme={preferences.theme} data-font={preferences.font} lang={preferences.locale.toLowerCase()} dir={preferences.locale==="FA"?"rtl":"ltr"} aria-label={t.chat}><div className="messenger">
+    <header className="chat-header"><BrandMark /><div className="chat-heading"><h1>LINA</h1><p>{t.manager}</p></div><div className="client-reference"><span>{t.id}</span><p dir="ltr">{liId}</p></div><PlayerSettings value={preferences} onChange={setPreferences}/></header>
+    {expired ? <aside className="chat-status" role="alert">{t.expired} <button onClick={() => location.reload()}>{t.reload}</button></aside> : offline && <aside className="chat-status" role="status">{t.offline}</aside>}
+    <section ref={history} className="messages" aria-label={t.messages} tabIndex={0} onScroll={() => {
       const el = history.current!;
       const resized = historySize.current.height !== el.clientHeight || historySize.current.content !== el.scrollHeight;
       // Layout-generated scroll events must not turn an anchored reader into a history reader.
@@ -133,22 +145,22 @@ export function PlayerMessenger({ liId, initialMessages }: { liId: string; initi
       else nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight <= 80;
       historySize.current = { height: el.clientHeight, content: el.scrollHeight };
       if (nearBottom.current) { setNewMessages(false); scheduleRead(); }
-    }}><div className="history-content"><ol className="message-list">{messages.map(message => <MessageBubble key={message.sequence} message={{ id: String(message.sequence), kind: message.authorType, text: message.text, attachments:message.attachments, time: hydrated ? localMessageTime(message.createdAt) : undefined }} />)}</ol></div></section>
-    {newMessages && <button className="new-messages" onClick={() => { if (history.current) history.current.scrollTop = history.current.scrollHeight; nearBottom.current = true; setNewMessages(false); scheduleRead(); }}>Новые сообщения{unread > 0 ? ` · ${unread}` : ""} ↓</button>}
-    <footer className="composer" aria-label="Написать сообщение" aria-busy={sending}><form onSubmit={e => { e.preventDefault(); void send(); }}>
-      {file&&<AttachmentPreview file={file} onRemove={()=>setFile(undefined)} disabled={sending}/> }
+    }}><div className="history-content"><ol className="message-list">{messages.map(message => <MessageBubble key={message.sequence} locale={preferences.locale} message={{ id: String(message.sequence), kind: message.authorType, text: message.authorType==="SYSTEM"?systemText(message.system?.key??null,message.system?.params,preferences.locale):message.text, attachments:message.attachments, time: hydrated ? localMessageTime(message.createdAt) : undefined }} />)}</ol></div></section>
+    {newMessages && <button className="new-messages" onClick={() => { if (history.current) history.current.scrollTop = history.current.scrollHeight; nearBottom.current = true; setNewMessages(false); scheduleRead(); }}>{t.newMessages}{unread > 0 ? ` · ${unread}` : ""} ↓</button>}
+    <footer className="composer" aria-label={t.compose} aria-busy={sending}><form onSubmit={e => { e.preventDefault(); void send(); }}>
+      {file&&<AttachmentPreview locale={preferences.locale} file={file} onRemove={()=>setFile(undefined)} disabled={sending}/> }
       <div className={`composer-field${error ? " composer-error" : ""}`}>
-        <input ref={picker} type="file" hidden accept={ATTACHMENT_ACCEPT} aria-label="Выбрать вложение" onChange={e=>{const selected=e.target.files?.[0];e.target.value='';if(selected){if(selected.size>ATTACHMENT_LIMIT){setError('Файл должен быть не больше 10 MiB.');return;}setFile(selected);setError('');}}}/>
-        <button className="icon-button attachment-button" type="button" disabled={sending||expired} onClick={()=>picker.current?.click()} aria-label="Прикрепить файл"><AttachmentIcon /></button>
-        <label className="sr-only" htmlFor="message-draft">Ваше сообщение</label>
-        <textarea ref={textarea} id="message-draft" rows={1} placeholder="Напишите сообщение…" value={draft} disabled={sending || expired} aria-describedby="composer-note" onChange={e => { draftRef.current = e.target.value; setDraft(e.target.value); }} onKeyDown={e => {
+        <input ref={picker} type="file" hidden accept={ATTACHMENT_ACCEPT} aria-label={t.choose} onChange={e=>{const selected=e.target.files?.[0];e.target.value='';if(selected){if(selected.size>ATTACHMENT_LIMIT){setError('size');return;}setFile(selected);setError('');}}}/>
+        <button className="icon-button attachment-button" type="button" disabled={sending||expired} onClick={()=>picker.current?.click()} aria-label={t.attach}><AttachmentIcon /></button>
+        <label className="sr-only" htmlFor="message-draft">{t.message}</label>
+        <textarea ref={textarea} id="message-draft" rows={1} dir="auto" placeholder={t.placeholder} value={draft} disabled={sending || expired} aria-describedby="composer-note" onChange={e => { draftRef.current = e.target.value; setDraft(e.target.value); }} onKeyDown={e => {
           if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); void send(); }
         }} />
-        <button className="icon-button send-button" type="submit" disabled={sending || expired || (!normalizeMessage(draft)&&!file)} aria-label="Отправить сообщение"><SendIcon /></button>
+        <button className="icon-button send-button" type="submit" disabled={sending || expired || (!normalizeMessage(draft)&&!file)} aria-label={t.send}><SendIcon /></button>
       </div>
-      <p id="composer-note" className="composer-note" role={error ? "alert" : "status"}>{sending ? "Отправляем…" : error || "Enter — отправить · Shift+Enter — новая строка"}</p>
-      {error && failedAttempt && normalizeMessage(draft) !== failedAttempt.text && <p className="failed-preview">Не подтверждено: {failedAttempt.text.slice(0, 120)}{failedAttempt.text.length > 120 ? "…" : ""}</p>}
-      {error && failedAttempt && !expired && <button className="retry-send" type="button" disabled={sending} onClick={() => void send(true)}>Повторить отправку</button>}
+      <p id="composer-note" className="composer-note" role={error ? "alert" : "status"}>{sending ? t.sending : error ? (error==="length"?t.length:error==="size"?t.size:error==="uncertain"?t.uncertain:playerError(Number(error),preferences.locale)) : t.hint}</p>
+      {error && failedAttempt && normalizeMessage(draft) !== failedAttempt.text && <p className="failed-preview">{t.unconfirmed} {failedAttempt.text.slice(0, 120)}{failedAttempt.text.length > 120 ? "…" : ""}</p>}
+      {error && failedAttempt && !expired && <button className="retry-send" type="button" disabled={sending} onClick={() => void send(true)}>{t.retry}</button>}
     </form></footer>
   </div></main>;
 }

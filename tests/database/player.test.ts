@@ -33,7 +33,7 @@ test("atomic identity, permanent conversation, welcome, hash-only storage and sa
   assert.ok(!JSON.stringify(row).includes(result.raw));
   const player = await resolvePlayer(db, result.raw, pepper);
   assert.ok(player); assert.equal(player.liId, row.client.liId);
-  assert.deepEqual(Object.keys(player).sort(), ["avatarEmoji", "displayName", "liId", "locale", "messages"]);
+  assert.deepEqual(Object.keys(player).sort(), ["avatarEmoji", "displayName", "liId", "locale", "messages", "uiFont", "uiTheme"]);
   assert.ok(!JSON.stringify(player).includes(hash));
   assert.deepEqual(await resolvePlayer(db, result.raw, pepper), player);
   assert.equal((await db.clientCredential.findUniqueOrThrow({ where: { id: row.id } })).lastUsedAt, null);

@@ -12,6 +12,7 @@ enum Locale {
   EN
   TR
   AZ
+  FA
 }
 
 enum MessageAuthorType {
@@ -27,6 +28,8 @@ model Client {
   liId        String   @unique @default(dbgenerated()) @db.VarChar(8)
   displayName String   @db.VarChar(80)
   locale      Locale   @default(EN)
+  uiTheme     String   @default("light") @db.VarChar(16)
+  uiFont      String   @default("modern") @db.VarChar(16)
   avatarEmoji String   @unique @db.VarChar(32)
   lastSeenAt  DateTime? @db.Timestamptz(3)
   createdAt   DateTime  @default(now()) @db.Timestamptz(3)

@@ -85,7 +85,7 @@ test("cookie owner isolates history and same idempotency key across clients", as
 });
 test("safe DTO exposes no message UUID author IDs key raw system parameters", async () => {
   const f = await fixture(); await sendMessage(db, f.raw, pepper, "plain", randomUUID()); await system(f.conv.id);
-  for (const m of (await pollMessages(db, f.raw, pepper, 0)).messages) assert.deepEqual(Object.keys(m).sort(), ["authorType", "createdAt", "sequence", "text"]);
+  for (const m of (await pollMessages(db, f.raw, pepper, 0)).messages) assert.deepEqual(Object.keys(m).sort(), m.system ? ["authorType", "createdAt", "sequence", "system", "text"] : ["authorType", "createdAt", "sequence", "text"]);
 });
 test("read is monotonic under parallel different cursors and repeated calls", async () => {
   const f = await fixture(); await system(f.conv.id, 5); await Promise.all([6, 2, 5, 1, 4].map(n => markRead(other, f.raw, pepper, n)));

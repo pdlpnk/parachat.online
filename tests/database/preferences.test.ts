@@ -1,0 +1,26 @@
+import {after,test} from 'node:test';
+import assert from 'node:assert/strict';
+import {randomBytes} from 'node:crypto';
+import {PrismaPg} from '@prisma/adapter-pg';
+import {PrismaClient} from '../../src/generated/prisma/client';
+import {utcDatabaseUrl} from '../../src/server/database-config';
+import {startPlayer,resolvePlayer} from '../../src/server/identity/service';
+import {issueBootstrap} from '../../src/server/identity/crypto';
+import {savePreferences} from '../../src/server/preferences/service';
+const url=process.env.TEST_DATABASE_URL;
+if(!url||process.env.LINA_ALLOW_DB_TESTS!=='1'||!['localhost','127.0.0.1'].includes(new URL(url).hostname)||!/^\/lina_test(?:_[a-z0-9_]+)?$/.test(new URL(url).pathname))throw Error('Disposable local DB required');
+const db=new PrismaClient({adapter:new PrismaPg({connectionString:utcDatabaseUrl(url)})}),pepper=randomBytes(32).toString('hex');
+after(()=>db.$disconnect());
+test('preferences persist, FA start, credentials and welcome remain unchanged',async()=>{
+ const a=await startPlayer(db,issueBootstrap(pepper),'Preferences A',pepper,'FA'),b=await startPlayer(db,issueBootstrap(pepper),'Preferences B',pepper);
+ const original=await resolvePlayer(db,a.raw,pepper);assert.equal(original?.locale,'FA');assert.equal(original?.uiTheme,'light');assert.equal(original?.uiFont,'modern');
+ assert.deepEqual(await savePreferences(db,a.raw,pepper,{theme:'purple',font:'tech',locale:'AZ'}),{theme:'purple',font:'tech',locale:'AZ'});
+ const next=await resolvePlayer(db,a.raw,pepper);assert.equal(next?.liId,original?.liId);assert.deepEqual(next?.messages,original?.messages);assert.equal(next?.uiTheme,'purple');assert.equal(next?.uiFont,'tech');assert.equal(next?.locale,'AZ');
+ assert.equal((await resolvePlayer(db,b.raw,pepper))?.uiTheme,'light');
+ for(const patch of [{theme:'bad'},{font:'bad'},{locale:'DE'},{clientId:'other',theme:'coral'}])await assert.rejects(savePreferences(db,a.raw,pepper,patch),{status:400});
+ await assert.rejects(savePreferences(db,undefined,pepper,{theme:'coral'}),{status:401});
+ await assert.rejects(db.client.update({where:{liId:original!.liId},data:{uiTheme:'invalid'}}));
+ await assert.rejects(db.client.update({where:{liId:original!.liId},data:{uiFont:'invalid'}}));
+ for(let i=0;i<29;i++)await savePreferences(db,a.raw,pepper,{theme:'light'});
+ await assert.rejects(savePreferences(db,a.raw,pepper,{theme:'light'}),{status:429});
+});

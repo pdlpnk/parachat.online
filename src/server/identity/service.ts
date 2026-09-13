@@ -1,3 +1,4 @@
+import {validLocale,type Locale} from "../../lib/preferences";
 import { randomBytes } from "node:crypto";
 import type { PrismaClient } from "../../generated/prisma/client";
 import { emojiForLiNumber } from "../../lib/emoji";
@@ -12,7 +13,7 @@ export class StartError extends Error {
   constructor(public readonly status: number, public readonly publicMessage: string) { super(publicMessage); }
 }
 const playerSelect = {
-  displayName: true, liId: true, avatarEmoji: true, locale: true,
+  displayName: true, liId: true, avatarEmoji: true, locale: true, uiTheme:true, uiFont:true,
   conversation: { select: { messages: {
     orderBy: { sequence: "desc" as const }, take: 100,
     select: messageSelect,
@@ -32,7 +33,8 @@ export async function resolvePlayer(db: PrismaClient, raw: string | undefined, p
 export type Player = NonNullable<Awaited<ReturnType<typeof resolvePlayer>>>;
 
 /** Only trusted route code receives the raw result, solely to install the HttpOnly cookie. */
-export async function startPlayer(db: PrismaClient, bootstrap: string | undefined, input: unknown, pepper: string) {
+export async function startPlayer(db: PrismaClient, bootstrap: string | undefined, input: unknown, pepper: string, locale:Locale = "RU") {
+  if(!validLocale(locale))throw new StartError(400,"Некорректный язык.");
   const name = validateDisplayName(input);
   if (!name) throw new StartError(400, "Введите имя от 1 до 80 символов без управляющих знаков.");
   const ticket = readBootstrap(bootstrap, pepper);
@@ -55,13 +57,13 @@ export async function startPlayer(db: PrismaClient, bootstrap: string | undefine
     const recent = await tx.clientCredential.count({ where: { createdAt: { gte: new Date(Date.now() - 60000) } } });
     if (recent >= STARTS_PER_MINUTE) throw new StartError(429, "Слишком много новых чатов. Попробуйте через минуту.");
     const client = await tx.client.create({ data: {
-      displayName: name, locale: "RU", avatarEmoji: randomBytes(16).toString("hex"),
+      displayName: name, locale, avatarEmoji: randomBytes(16).toString("hex"),
     }, select: { id: true, liNumber: true } });
     await tx.client.update({ where: { id: client.id }, data: { avatarEmoji: emojiForLiNumber(client.liNumber) } });
     const conversation = await tx.conversation.create({ data: { clientId: client.id }, select: { id: true } });
     await tx.message.create({ data: {
       conversationId: conversation.id, authorType: "SYSTEM", systemKey: "system.welcome",
-      systemParams: { name }, sourceLocale: "RU", idempotencyKey: "player-start:welcome:v1",
+      systemParams: { name }, sourceLocale: locale, idempotencyKey: "player-start:welcome:v1",
     } });
     const expiry = new Date(Date.now() + CREDENTIAL_SECONDS * 1000);
     await tx.clientCredential.create({ data: { clientId: client.id, credentialHash: hash, expiresAt: expiry } });

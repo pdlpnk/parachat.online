@@ -1,3 +1,5 @@
+import {WORDS} from "@/lib/player-i18n";
+import type {Locale} from "@/lib/preferences";
 /* eslint-disable @next/next/no-img-element -- Private authenticated images must bypass public image optimization. */
 import { fileSize, type AttachmentDTO } from "@/lib/attachments";
 import { BrandMark } from "./brand-mark";
@@ -18,19 +20,20 @@ export function SendIcon() {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 7-7 7 7M12 5v14" /></svg>;
 }
 
-export function MessageBubble({ message, perspective = "player" }: { message: MessageView; perspective?: "player" | "admin" }) {
+export function MessageBubble({ message, perspective = "player", locale="RU" }: { locale?:Locale; message: MessageView; perspective?: "player" | "admin" }) {
+  const t=WORDS[locale];
   return <li className={`message-row message-${message.kind.toLowerCase()}${perspective === "admin" ? " admin-bubble" : ""}`}>
     {message.kind !== "USER" && <BrandMark small />}
-    <article className="message-bubble" aria-label={message.kind === "USER" ? (perspective === "admin" ? "Клиент" : "Вы") : message.kind === "OPERATOR" ? "Менеджер" : "Сообщение LINA"}>
+    <article className="message-bubble" aria-label={message.kind === "USER" ? (perspective === "admin" ? "Клиент" : ({RU:"Вы",EN:"You",TR:"Siz",AZ:"Siz",FA:"شما"}[locale])) : message.kind === "OPERATOR" ? (perspective === "admin" ? "Менеджер" : t.manager) : (perspective === "admin" ? "Сообщение LINA" : "LINA")}>
       {message.kind === "SYSTEM" && <p className="bubble-eyebrow">LINA</p>}
-      {message.text&&<p className="message-text">{message.text}</p>}
+      {message.text&&<p className="message-text" dir="auto">{message.text}</p>}
       {message.attachments?.map(a=>{const url=`/api/${perspective}/attachments/${a.id}`;return <div className="message-attachment" key={a.id}>
-        {a.mediaType.startsWith('image/')?<a href={url} target="_blank" rel="noopener noreferrer" aria-label={`Открыть ${a.displayFilename}`}>
+        {a.mediaType.startsWith('image/')?<a href={url} target="_blank" rel="noopener noreferrer" aria-label={`${t.open} ${a.displayFilename}`}>
           <img src={url} alt={a.displayFilename} loading="lazy"/></a>:
           a.mediaType==='video/mp4'?<video src={url} controls preload="metadata" playsInline aria-label={a.displayFilename}/>:<span aria-hidden="true">PDF</span>}
-        <a href={url} target="_blank" rel="noopener noreferrer" className="attachment-link">{a.displayFilename} · {fileSize(a.byteSize)}</a>
+        <a href={url} target="_blank" rel="noopener noreferrer" className="attachment-link" dir="auto">{a.displayFilename} · {fileSize(a.byteSize)}</a>
       </div>;})}
-      {message.time && <span className="message-time">{message.time}</span>}
+      {message.time && <span className="message-time" dir="ltr">{message.time}</span>}
     </article>
   </li>;
 }
