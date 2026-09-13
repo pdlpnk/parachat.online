@@ -132,12 +132,12 @@ button:disabled, textarea:disabled { cursor: not-allowed; }
 /* Stage 4: admin-only workspace; player layout is unchanged. */
 .admin-shell { height:100dvh; min-height:0; overflow:hidden; display:grid; grid-template-columns:minmax(280px,360px) minmax(0,1fr); background:var(--color-surface); }
 .admin-shell button,.admin-shell input,.admin-shell select { font-size:16px; }
-.admin-shell button { color:var(--color-text); }
+:where(.admin-shell) button { color:var(--color-text); }
 .admin-sidebar { display:flex; flex-direction:column; min-height:0; min-width:0; border-right:1px solid var(--color-border); }
 .admin-toolbar { display:flex; align-items:center; gap:10px; padding:16px; flex:none; }
 .admin-toolbar h1 { font-size:18px; letter-spacing:.08em; margin:0; }
 .admin-name { flex:1; min-width:0; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.admin-toolbar button,.admin-filter-row button,.admin-pagination button,.admin-detail-actions button,.admin-back,.admin-tag-dialog button { border:1px solid var(--color-border); background:var(--color-surface); border-radius:8px; padding:8px 10px; }
+.admin-toolbar > button,.admin-filter-row > button,.admin-pagination button,.admin-detail-actions button,.admin-back,.admin-tag-dialog button { border:1px solid var(--color-border); background:var(--color-surface); border-radius:8px; padding:8px 10px; }
 .admin-tabs { display:flex; gap:8px; padding:0 16px 12px; }
 .admin-tabs button { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; border:0; border-radius:10px; padding:10px; background:var(--color-history); }
 .admin-tabs button[aria-pressed=true] { background:var(--color-primary); color:white; }
@@ -229,11 +229,11 @@ button.tag-chip{cursor:pointer}.tag-chip[aria-pressed=true]{outline:2px solid cu
 .tag-picker{position:fixed;inset:105px 20px auto auto;margin:0;width:330px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 125px);border:1px solid #dfe5e1;border-radius:16px;padding:16px;box-shadow:0 10px 40px #183d2425;color:#31413a}.tag-picker::backdrop{background:#183d2420}.tag-picker header{display:flex;align-items:center;justify-content:space-between;gap:8px}.tag-picker h2{font-size:17px;margin:0 0 10px}.tag-picker button{cursor:pointer;border:0;padding:7px;border-radius:8px}.tag-picker-list{display:flex;flex-wrap:wrap;gap:8px;max-height:180px;overflow-y:auto;margin:10px 0}.tag-picker-row{display:flex;max-width:100%;align-items:center;gap:2px}.tag-picker .tag-edit{background:transparent;color:#66776d;padding:3px;font-size:13px}.tag-picker input{width:100%;min-width:0;font-size:16px;border:1px solid #dfe5e1;border-radius:8px;padding:8px;margin:6px 0}.tag-palette{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}.tag-palette button{min-width:27px}
 @media(max-width:760px){.tag-picker{inset:auto 0 0;margin:0;width:100%;max-width:100%;max-height:75dvh;border-radius:18px 18px 0 0;padding-bottom:max(16px,env(safe-area-inset-bottom))}.tag-picker-list{max-height:150px}}
 /* Player-only tokens: Admin keeps the existing palette and typography. */
-.player-root { background:var(--color-background); color:var(--color-text); font-family:var(--font-sans); --incoming-bg:var(--color-surface); }
-.player-root[data-theme="emerald"] { color-scheme:dark; --color-background:#080b0a;--color-surface:#101412;--incoming-bg:#191e1b;--color-history:#111714;--color-user:#163d30;--color-primary:#35d38a;--color-accent:#68e4aa;--color-text:#f4f7f5;--color-text-muted:#a1ada6;--color-border:#38443c;--color-soft-accent:#163d30;--color-time:#a1ada6;--color-error:#ff9994;--color-focus:#68e4aa; }
-.player-root[data-theme="purple"] { color-scheme:dark;--color-background:#0e0e12;--color-surface:#15151b;--incoming-bg:#202029;--color-history:#17171f;--color-user:#342553;--color-primary:#b18aff;--color-accent:#c9adff;--color-text:#f5f3f9;--color-text-muted:#b1aabd;--color-border:#3e3c4b;--color-soft-accent:#342553;--color-time:#b1aabd;--color-error:#ff9994;--color-focus:#c9adff; }
-.player-root[data-theme="orange"] { color-scheme:dark;--color-background:#0d0c0b;--color-surface:#141210;--incoming-bg:#201d19;--color-history:#191510;--color-user:#4a2a16;--color-primary:#ff914d;--color-accent:#ffb283;--color-text:#f6f3ef;--color-text-muted:#b6aca1;--color-border:#453c33;--color-soft-accent:#4a2a16;--color-time:#b6aca1;--color-error:#ff9994;--color-focus:#ffb283; }
-.player-root[data-theme="coral"] { color-scheme:dark;--color-background:#09090a;--color-surface:#111113;--incoming-bg:#1d1d20;--color-history:#151517;--color-user:#482125;--color-primary:#ff7c84;--color-accent:#ffa0a6;--color-text:#f7f4f4;--color-text-muted:#b4a7aa;--color-border:#41363a;--color-soft-accent:#482125;--color-time:#b4a7aa;--color-error:#ffb0a8;--color-focus:#ffa0a6; }
+:is(.player-root,.admin-shell) { background:var(--color-background); color:var(--color-text); font-family:var(--font-sans); --incoming-bg:var(--color-surface); }
+:is(.player-root,.admin-shell)[data-theme="emerald"] { color-scheme:dark; --color-background:#080b0a;--color-surface:#101412;--incoming-bg:#191e1b;--color-history:#111714;--color-user:#163d30;--color-primary:#35d38a;--color-accent:#68e4aa;--color-text:#f4f7f5;--color-text-muted:#a1ada6;--color-border:#38443c;--color-soft-accent:#163d30;--color-time:#a1ada6;--color-error:#ff9994;--color-focus:#68e4aa; }
+:is(.player-root,.admin-shell)[data-theme="purple"] { color-scheme:dark;--color-background:#0e0e12;--color-surface:#15151b;--incoming-bg:#202029;--color-history:#17171f;--color-user:#342553;--color-primary:#b18aff;--color-accent:#c9adff;--color-text:#f5f3f9;--color-text-muted:#b1aabd;--color-border:#3e3c4b;--color-soft-accent:#342553;--color-time:#b1aabd;--color-error:#ff9994;--color-focus:#c9adff; }
+:is(.player-root,.admin-shell)[data-theme="orange"] { color-scheme:dark;--color-background:#0d0c0b;--color-surface:#141210;--incoming-bg:#201d19;--color-history:#191510;--color-user:#4a2a16;--color-primary:#ff914d;--color-accent:#ffb283;--color-text:#f6f3ef;--color-text-muted:#b6aca1;--color-border:#453c33;--color-soft-accent:#4a2a16;--color-time:#b6aca1;--color-error:#ff9994;--color-focus:#ffb283; }
+:is(.player-root,.admin-shell)[data-theme="coral"] { color-scheme:dark;--color-background:#09090a;--color-surface:#111113;--incoming-bg:#1d1d20;--color-history:#151517;--color-user:#482125;--color-primary:#ff7c84;--color-accent:#ffa0a6;--color-text:#f7f4f4;--color-text-muted:#b4a7aa;--color-border:#41363a;--color-soft-accent:#482125;--color-time:#b4a7aa;--color-error:#ffb0a8;--color-focus:#ffa0a6; }
 [data-font="modern"] { --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Tahoma,sans-serif; }
 [data-font="soft"] { --font-sans:"Trebuchet MS",Verdana,"Arial Rounded MT Bold",Tahoma,sans-serif; }
 [data-font="tech"] { --font-sans:ui-monospace,"Cascadia Code","SFMono-Regular",Consolas,"Liberation Mono",Tahoma,monospace; }
@@ -267,12 +267,32 @@ button.tag-chip{cursor:pointer}.tag-chip[aria-pressed=true]{outline:2px solid cu
 .font-options button[aria-pressed="true"],.language-options button[aria-pressed="true"] {border-color:var(--color-primary);box-shadow:inset 0 0 0 1px var(--color-primary);background:var(--color-user);color:var(--color-text);}
 .player-root .name-card .language-options button:hover {background:var(--color-user);}
 @media(max-width:640px){.player-settings {margin:auto 0 0;width:100%;max-width:none;max-height:85dvh;border-radius:20px 20px 0 0;padding:18px 16px max(18px,env(safe-area-inset-bottom));}.player-root .chat-header {padding-inline:10px;}.player-root .chat-header .brand-mark {width:32px;height:32px;font-size:20px;}.theme-swatch {width:44px;height:44px;}}
-.player-root .attachment-preview {background:var(--color-soft-accent);color:var(--color-text);border:1px solid var(--color-border);}
-.player-root .attachment-preview button {color:var(--color-text);min-width:44px;min-height:44px;}
+:is(.player-root,.admin-shell) .attachment-preview {background:var(--color-soft-accent);color:var(--color-text);border:1px solid var(--color-border);}
+:is(.player-root,.admin-shell) .attachment-preview button {color:var(--color-text);min-width:44px;min-height:44px;}
 .player-root .composer-note[role="alert"] {color:var(--color-error);}
 .player-root .brand-mark {direction:ltr;}
 /* Visual viewport shrinks with mobile keyboards; zoom remains available. */
 @media(max-width:640px){.messenger-shell.player-root {height:var(--player-height,100dvh);}}
-.player-root .attachment-filename small {color:var(--color-text-muted);}
-.player-root .message-attachment img,.player-root .message-attachment video {background:var(--color-history);}
-.player-root[data-theme="light"] {--color-text-muted:#59665e;}
+:is(.player-root,.admin-shell) .attachment-filename small {color:var(--color-text-muted);}
+:is(.player-root,.admin-shell) .message-attachment img,:is(.player-root,.admin-shell) .message-attachment video {background:var(--color-history);}
+:is(.player-root,.admin-shell)[data-theme="light"] {--color-text-muted:#59665e;}
+
+/* Admin surfaces consume the same Stage 6 palette; tag colors stay independent. */
+.admin-shell {color:var(--color-text);}
+.admin-shell input,.admin-shell select,.admin-shell textarea {background:var(--color-surface);color:var(--color-text);border-color:var(--color-border);}
+.admin-shell .admin-tag-dialog,.admin-shell .tag-picker,.admin-shell .tag-filter-options {background:var(--color-surface);color:var(--color-text);border-color:var(--color-border);}
+.admin-shell .tag-add {background:var(--color-surface);border-color:var(--color-border);}
+.admin-shell .tag-edit {color:var(--color-text-muted);}
+.admin-shell .admin-bubble.message-user .message-bubble {background:var(--incoming-bg);}
+.admin-shell .conversation-card:hover {background:var(--color-soft-accent);}
+.admin-shell .settings-trigger {width:44px;height:44px;flex:none;padding:8px;}
+.admin-shell .player-settings button.theme-swatch {border-radius:50%;padding:0;}
+.admin-shell .player-settings {font-size:16px;}
+.admin-shell .player-settings .icon-button {min-width:44px;min-height:44px;}
+.admin-shell:not([data-theme="light"]) .admin-tabs button[aria-pressed=true],.admin-shell:not([data-theme="light"]) .unread-badge {color:var(--color-background);}
+.admin-shell .admin-tabs .unread-badge {background:var(--color-surface);color:var(--color-text);}
+.admin-shell .composer-note[role="alert"] {color:var(--color-error);}
+.admin-shell .admin-toolbar {gap:8px;}
+.admin-shell .admin-toolbar .brand-mark {flex-shrink:0;}
+
+.admin-shell .tag-filter-options button:not(.tag-chip),.admin-shell .tag-picker button:not(.tag-chip):not(.tag-edit) {background:var(--color-history);color:var(--color-text);}

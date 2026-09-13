@@ -1,3 +1,4 @@
+import { saveAdminTheme } from '@/server/admin/preferences';
 import { upload,download } from '@/server/attachments/http';
 import { response, requireOrigin } from '@/server/identity/http';
 import { StartError } from '@/server/identity/service';
@@ -14,6 +15,9 @@ async function handle(request:Request,ctx:Context){
     if(method==='POST'&&path.length===3&&path[0]==='conversations'&&path[2]==='attachments')return await upload(request,true,path[1]);
     if(method==='GET'&&path.length===2&&path[0]==='attachments')return await download(request,true,path[1]!);
     const context=await adminContext(), query=new URL(request.url).searchParams;
+    if(method==='PATCH' && path.join('/')==='preferences'){
+      const b=await adminBody(request,['theme'],512);return response(await saveAdminTheme(...context,b.theme));
+    }
     if(method==='POST' && path.join('/')==='login'){
       const b=await adminBody(request,['password']); const session=await adminLogin(context[0],b.password);
       const result=response({ok:true});const c=adminCookie();result.cookies.set(c.name,session.raw,{...c.flags,expires:session.expiresAt});return result;

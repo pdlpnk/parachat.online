@@ -26,6 +26,15 @@ try{
  await check('/api/admin/login',{method:'POST',raw:'x'.repeat(2049)},413);
  await check('/api/admin/login',{method:'POST',body:{password:'incorrect password'}},401);
  const login=await req('/api/admin/login',{method:'POST',body:{password}});assert.equal(login.status,200);const admin=cookie(login,'__Host-lina_admin');assert.match(login.headers.get('set-cookie')!,/HttpOnly/i);assert.match(login.headers.get('set-cookie')!,/Secure/i);assert.match(login.headers.get('set-cookie')!,/SameSite=lax/i);assert.match(login.headers.get('set-cookie')!,/Path=\//i);
+ await check('/api/admin/preferences',{method:'PATCH',body:{theme:'light'}},401);
+ await check('/api/admin/preferences',{method:'PATCH',cookie:admin,body:{theme:'bad'}},400);
+ await check('/api/admin/preferences',{method:'PATCH',cookie:admin,body:{theme:'coral',adminId:randomUUID()}},400);
+ await check('/api/admin/preferences',{method:'PATCH',cookie:admin,body:{theme:'coral'},origin:'https://evil.invalid'},403);
+ await check('/api/admin/preferences',{method:'PATCH',cookie:admin,raw:'x'.repeat(513)},413);
+ for(const theme of ['light','emerald','purple','orange','coral']){
+  assert.deepEqual(await check('/api/admin/preferences',{method:'PATCH',cookie:admin,body:{theme}},200),{theme});
+  assert.match(await(await req('/admin',{cookie:admin})).text(),new RegExp('data-theme="'+theme+'"'));
+ }
  const workspace=await req('/admin',{cookie:admin});assert.equal(workspace.status,200);assert.doesNotMatch(await workspace.text(),/type="password"|HTTP admin|shared-admin@lina.invalid/);
  const bootstrap=cookie(await req('/api/player/bootstrap',{method:'POST'}),'__Host-lina_bootstrap');
  const player=cookie(await req('/api/player/start',{method:'POST',cookie:bootstrap,body:{displayName:'HTTP stage4'}}),'__Host-lina_client');

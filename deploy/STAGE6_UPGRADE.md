@@ -1,4 +1,4 @@
-# Stage 6 — ручное обновление работающего Stage 5
+# Stage 6 + Admin themes — ручное обновление работающего Stage 5
 
 Команды не выполнялись на production. Только LINA, PM2 `lina`, `/srv/lina/current`,
 существующий env `/srv/lina/shared/lina.env`, PostgreSQL `lina_prod`, HTTPS parachat.online.
@@ -8,11 +8,12 @@ Nginx/DNS/HTTPS/другие проекты не требуют изменени
 
 ## 1. Подготовка нового release
 
-Вставить полный SHA из итогового ответа. Не использовать плавающий main.
+Вставить полный SHA из итогового ответа дополнения Admin themes (commit message `Add admin theme preferences`).
+Не выкатывать прежний Player-only commit `cef8c16902cd27ac6f25b0261a1372544753a8ef`. Не использовать плавающий main.
 
 ```bash
 set -euo pipefail
-LINA_SHA='REVIEWED_STAGE6_SHA'
+LINA_SHA='REVIEWED_STAGE6_ADMIN_THEMES_SHA'
 LINA_RELEASE="/srv/lina/releases/$LINA_SHA"
 LINA_PREVIOUS="$(readlink -f /srv/lina/current)"
 node --version
@@ -50,7 +51,7 @@ sudo chmod 0600 "$LINA_BACKUP.uploads.tar.gz"
 Для нестандартного ATTACHMENT_STORAGE_DIR использовать фактический каталог из существующей настройки.
 Сохранить backup вне Droplet. Существующий env хранится отдельно в защищённом backup.
 
-## 3. Одна новая миграция
+## 3. Миграции итогового Stage 6
 
 ```bash
 cd "$LINA_RELEASE"
@@ -58,6 +59,8 @@ node --env-file=/srv/lina/shared/lina.env node_modules/prisma/build/index.js mig
 ```
 
 `20260913010000_player_preferences`: добавляет FA и uiTheme/uiFont с defaults light/modern.
+`20260914010000_admin_theme`: добавляет Admin.uiTheme с default light и CHECK whitelist.
+Если Player Stage 6 уже применён, migrate deploy применит только оставшуюся миграцию Admin.
 Не выполнять db push/reset, не менять pepper или пароль Admin, не создавать нового Admin.
 
 ## 4. Переключение current
@@ -99,6 +102,7 @@ curl --fail --silent --show-error https://parachat.online/api/health
 - FA: RTL, читаемые LI/URL/имена файлов; 320px, landscape, реальная экранная клавиатура.
 - Image/PDF/MP4, preview/remove/error/retry; read/unread/polling.
 - /admin password-only, reply, archive и colored tags прежние; тема Player не влияет на Admin.
+- Admin gear → все пять тем; logout/login и reload сохраняют тему; теги сохраняют свои цвета.
 - /dev/messenger по-прежнему 404 в production.
 
 ## Rollback

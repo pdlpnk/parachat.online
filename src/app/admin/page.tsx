@@ -1,3 +1,4 @@
+import type { Preferences } from '@/lib/preferences';
 import { AdminLogin } from '@/components/admin/login';
 import { adminContext } from '@/server/admin/http';
 import { adminSession } from '@/server/admin/auth';
@@ -10,5 +11,5 @@ export default async function AdminPage(){
     if(!(e instanceof StartError&&e.status===401))return <main className="landing"><p role="alert">Admin временно недоступен. Обновите страницу.</p></main>;
   }
   if(!admin)return <AdminLogin/>;
-  return <AdminWorkspace displayName="Менеджер"/>;
+  return <AdminWorkspace displayName="Менеджер" initialTheme={admin.uiTheme as Preferences["theme"]}/>;
 }

@@ -1,4 +1,6 @@
 'use client';
+import {PlayerSettings} from '../player-settings';
+import type {Preferences} from '@/lib/preferences';
 import { useCallback,useEffect,useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { AdminDetail,AdminList,ConversationDTO,TagDTO } from '@/lib/admin';
@@ -13,7 +15,8 @@ function DetailLoader({id,onUpdate,onBack}:{id:string;onUpdate:(v:ConversationDT
  if(!detail)return <section className="admin-detail-placeholder"><button onClick={onBack}>← К списку</button><p role={error?'alert':'status'}>{error||'Загружаем диалог…'}</p>{error&&<button onClick={()=>{setError('');setRetry(n=>n+1);}}>Повторить</button>}</section>;
  return <AdminConversation id={id} initial={detail} onUpdate={onUpdate} onBack={onBack}/>;
 }
-export function AdminWorkspace({displayName}:{displayName:string}){
+export function AdminWorkspace({displayName,initialTheme="light"}:{displayName:string;initialTheme?:Preferences["theme"]}){
+ const [theme,setTheme]=useState(initialTheme);
  const router=useRouter();const [state,setState]=useState('active'),[query,setQuery]=useState(''),[search,setSearch]=useState(''),[filter,setFilter]=useState(''),[page,setPage]=useState(0);
  const [list,setList]=useState<AdminList|null>(null),[tags,setTags]=useState<TagDTO[]>([]),[selected,setSelected]=useState<string|null>(null),[error,setError]=useState(''),[expired,setExpired]=useState(false),[refresh,setRefresh]=useState(0);
  const [logoutBusy,setLogoutBusy]=useState(false);
@@ -34,8 +37,8 @@ export function AdminWorkspace({displayName}:{displayName:string}){
   void run();document.addEventListener('visibilitychange',visibility);window.addEventListener('online',visibility);
   return()=>{disposed=true;clearTimeout(timer);controller?.abort();document.removeEventListener('visibilitychange',visibility);window.removeEventListener('online',visibility);};
  },[state,search,filter,page,refresh,expired]);
- return <main className={`admin-shell${selected?' admin-has-selection':''}`}>
- <aside className="admin-sidebar" aria-label="Список диалогов"><header className="admin-toolbar"><BrandMark small/><h1>LINA</h1><span className="admin-name">{displayName}</span><button disabled={logoutBusy} onClick={async()=>{if(logoutBusy)return;setLogoutBusy(true);try{await adminRequest('/api/admin/logout',jsonRequest({}));router.replace('/admin');router.refresh();}catch(e){if(e instanceof AdminRequestError&&e.status===401){router.replace('/admin');router.refresh();}else setError('Не удалось выйти. Повторите.');}finally{setLogoutBusy(false);}}}>Выйти</button></header>
+ return <main data-theme={theme} className={`admin-shell${selected?' admin-has-selection':''}`}>
+ <aside className="admin-sidebar" aria-label="Список диалогов"><header className="admin-toolbar"><BrandMark small/><h1>LINA</h1><span className="admin-name">{displayName}</span><PlayerSettings admin value={{theme,font:"modern",locale:"RU"}} onChange={v=>setTheme(v.theme)}/><button disabled={logoutBusy} onClick={async()=>{if(logoutBusy)return;setLogoutBusy(true);try{await adminRequest('/api/admin/logout',jsonRequest({}));router.replace('/admin');router.refresh();}catch(e){if(e instanceof AdminRequestError&&e.status===401){router.replace('/admin');router.refresh();}else setError('Не удалось выйти. Повторите.');}finally{setLogoutBusy(false);}}}>Выйти</button></header>
  <div className="admin-tabs" aria-label="Раздел диалогов">{['active','archive'].map(tab=><button key={tab} aria-pressed={state===tab} onClick={()=>{setState(tab);setPage(0);setList(null);}}>{tab==='active'?'Active':'Archive'}{state===tab&&!!list?.unread&&<span className="unread-badge">{list.unread}</span>}</button>)}</div>
  <div className="admin-filters"><label className="sr-only" htmlFor="admin-search">Поиск по имени или LI ID</label><input id="admin-search" placeholder="Имя или LI ID" value={query} maxLength={80} onChange={e=>setQuery(e.target.value)}/><div className="admin-filter-row"><TagFilter tags={tags} value={filter} onChange={id=>{setFilter(id);setPage(0);setList(null);}}/></div></div>
  {expired?<p role="alert" className="admin-error">Сессия завершена. <a href="/admin">Войти снова</a></p>:error&&<p role="alert" className="admin-error">{error} <button onClick={reload}>Повторить</button></p>}

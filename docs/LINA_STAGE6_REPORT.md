@@ -117,3 +117,23 @@ backup DB + uploads, новая migration, current switch, restart только 
 DNS/Nginx/HTTPS/DB-user/PM2 архитектура не меняются. Production команды не выполнялись.
 Attachments backend, tag color model, Admin auth, LI и permanent conversation не переписаны;
 regression suites включают отправку, retry, polling/read/unread, Admin и attachments/tags.
+
+## Дополнение: Admin themes
+
+Admin теперь получает те же пять палитр через shared CSS selectors; второй набор цветов отсутствует.
+Это дополнение заменяет утверждения выше о неизменной светлой теме Admin.
+Admin.uiTheme сохраняется независимо от Client; миграция `20260914010000_admin_theme`, default light,
+DB CHECK whitelist. PATCH /api/admin/preferences принимает только {theme}, максимум 512 bytes,
+проверяет exact Origin и действующую Admin session; Admin ID берётся только из session.
+Сохранённая тема присутствует в SSR. Cookie/auth/expiry/logout не изменены.
+Общий settings dialog переиспользован с единственным разделом «Оформление»; Admin fonts/languages отсутствуют.
+
+Проверки дополнения: unit 33 PASS, DB 66 PASS, Admin HTTP 64 PASS, attachments HTTP 23 PASS,
+Player preferences HTTP PASS; lint/typecheck/Prisma validate/generate/standalone build PASS.
+DB coverage: default, все пять значений, invalid, независимый второй Admin, revoked/anonymous,
+новая сессия после logout/login. HTTP coverage: Origin/body/ownership fields/auth/SSR всех тем.
+В браузере сняты Light/Emerald/Purple/Orange/Coral; проверены отдельные цвета тегов,
+image/video/PDF, settings, tag picker и master/detail на 320/360/390/414/430, 844×390, 1280×600/720.
+Переполнения нет; Tab wrap и bottom sheet проверены. Физическая мобильная клавиатура не проверялась.
+Новых env/secrets нет. Production не подключался и не менялся.
+Итоговый SHA дополнения и push приводятся в ответе; для выкладки использовать обновлённый STAGE6_UPGRADE.md.

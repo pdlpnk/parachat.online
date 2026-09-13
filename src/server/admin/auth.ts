@@ -27,14 +27,14 @@ export async function adminLogin(db: PrismaClient, password: unknown) {
 }
 export async function authenticateAdmin(tx: Prisma.TransactionClient, raw: string | undefined, touch = false) {
   if (!validCredential(raw)) throw new StartError(401, 'Сессия администратора завершена. Войдите снова.');
-  const [admin] = await tx.$queryRaw<{ id: string; displayName: string; sessionId: string }[]>`SELECT a.id, a."displayName", s.id AS "sessionId" FROM "AdminSession" s JOIN "Admin" a ON a.id = s."adminId"
+  const [admin] = await tx.$queryRaw<{ id: string; displayName: string; uiTheme: string; sessionId: string }[]>`SELECT a.id, a."displayName", a."uiTheme", s.id AS "sessionId" FROM "AdminSession" s JOIN "Admin" a ON a.id = s."adminId"
     WHERE s."tokenHash" = ${adminTokenHash(raw)} AND s."revokedAt" IS NULL AND a."disabledAt" IS NULL AND s."idleExpiresAt" > clock_timestamp() AND s."absoluteExpiresAt" > clock_timestamp() FOR SHARE OF a FOR UPDATE OF s`;
   if (!admin) throw new StartError(401, 'Сессия администратора завершена. Войдите снова.');
   if (touch) await tx.$executeRaw`UPDATE "AdminSession" SET "lastSeenAt" = clock_timestamp(), "idleExpiresAt" = LEAST("absoluteExpiresAt", clock_timestamp() + interval '30 minutes') WHERE id = ${admin.sessionId}::uuid`;
   return admin;
 }
 export async function adminSession(db: PrismaClient, raw: string | undefined) {
-  return db.$transaction(async tx => { const a = await authenticateAdmin(tx, raw); return { displayName: a.displayName }; }, txOptions);
+  return db.$transaction(async tx => { const a = await authenticateAdmin(tx, raw); return { displayName: a.displayName, uiTheme: a.uiTheme }; }, txOptions);
 }
 export async function adminLogout(db: PrismaClient, raw: string | undefined) {
   await db.$transaction(async tx => { const a = await authenticateAdmin(tx, raw); await tx.adminSession.update({ where: { id: a.sessionId }, data: { revokedAt: new Date() } }); }, txOptions);
