@@ -15,3 +15,18 @@ test('all locales resolve structured welcome without mutating message params',()
  for(const l of LOCALES){assert.ok(systemText('system.welcome',params,l).includes('Lina'));assert.equal(systemText('unknown',params,l),WORDS[l].system);assert.deepEqual(Object.keys(WORDS[l]).sort(),Object.keys(WORDS.EN).sort());}
  assert.deepEqual(params,{name:'Lina'});assert.ok(systemText('system.welcome',{name:'$&'},'EN').includes('$&'));
 });
+test('Stage 7 approved Russian welcome is exact',()=>{
+ assert.equal(systemText('system.welcome',{name:'Роман'},'RU'),`Привет, Роман! 👋
+
+Отлично, теперь мы на связи!
+
+Я LINA — твой персональный ассистент. Здесь мы будем обсуждать рабочие моменты, разбирать возможности заработка и двигаться к первым результатам. 🚀
+
+Я помогу тебе разобраться в процессе и отвечу на вопросы.
+
+Скажи, ты уже знаком с нашей системой или начинаешь с нуля?`);
+});
+test('Stage 7 landing and welcome translations cover every locale',()=>{
+ for(const locale of LOCALES){const t=WORDS[locale];assert.ok(t.title&&t.subtitle&&t.name&&t.namePlaceholder&&t.start);assert.equal(t.welcome.split('\n\n').length,5);assert.equal((t.welcome.match(/\{name\}/g)||[]).length,1);assert.ok(t.welcome.includes('LINA'));}
+ assert.equal(WORDS.RU.title,'Добро пожаловать!');assert.equal(WORDS.RU.subtitle,'Ваш персональный ассистент уже ждёт вас.');assert.equal(WORDS.RU.start,'Перейти в чат →');
+});

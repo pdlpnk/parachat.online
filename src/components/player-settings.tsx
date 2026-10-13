@@ -2,8 +2,8 @@
 import {useRef,useState} from 'react';
 import {THEMES,FONTS,LOCALES,THEME_NAMES,LANGUAGE_NAMES,type Preferences} from '@/lib/preferences';
 import {WORDS} from '@/lib/player-i18n';
-export function LanguagePicker({value,onChange,disabled=false}:{value:Preferences['locale'];onChange:(v:Preferences['locale'])=>void;disabled?:boolean}){
- return <div className="language-options" role="group" aria-label={WORDS[value].language}>{LOCALES.map(l=><button key={l} type="button" lang={l.toLowerCase()} dir={l==='FA'?'rtl':'ltr'} aria-pressed={l===value} disabled={disabled} onClick={()=>onChange(l)}>{LANGUAGE_NAMES[l]}</button>)}</div>;
+export function LanguagePicker({value,onChange,disabled=false,landing=false}:{value:Preferences['locale'];onChange:(v:Preferences['locale'])=>void;disabled?:boolean;landing?:boolean}){
+ return <div className="language-options" role="group" aria-label={WORDS[value].language}>{(landing?(["TR","AZ","EN","RU","FA"] as const):LOCALES).map(l=><button key={l} type="button" lang={l.toLowerCase()} dir={l==='FA'?'rtl':'ltr'} aria-pressed={l===value} disabled={disabled} onClick={()=>onChange(l)}>{LANGUAGE_NAMES[l]}</button>)}</div>;
 }
 export function PlayerSettings({value,onChange,admin=false}:{value:Preferences;onChange:(v:Preferences)=>void;admin?:boolean}){
  const dialog=useRef<HTMLDialogElement>(null),trigger=useRef<HTMLButtonElement>(null),locked=useRef(false);

@@ -57,10 +57,9 @@ export function NameForm({unavailable=false}:{unavailable?:boolean}) {
         onChange={(event) => setName(event.target.value)} required maxLength={160} disabled={busy}
         aria-describedby={error ? "start-error" : undefined} />
       {error && <p className="error" id="start-error" role="alert">{error==="secure"?t.secure:playerError(Number(error),locale)}</p>}
-      <LanguagePicker value={locale} onChange={setLocale} disabled={busy}/>
+      <LanguagePicker landing value={locale} onChange={setLocale} disabled={busy}/>
       <button disabled={busy||unavailable} type="submit">{busy ? t.opening : t.start}</button>
     </form>
-    <p className="landing-note">{t.note}</p>
     <noscript>{t.javascript}</noscript>
   </section></main>;
 }
