@@ -31,7 +31,9 @@ try {
   const send = (text, extra = {}) => ({ method: 'POST', cookie, key: randomUUID(), body: { text }, ...extra });
   const first = await status('/api/player/messages', send('<b>real text</b>\nУкраїна 😀', { key }), 200);
   assert.deepEqual(Object.keys(first.message).sort(), ['authorType', 'createdAt', 'sequence', 'text']); assert.equal(first.message.sequence, 2);
-  assert.deepEqual(await status('/api/player/messages', send('<b>real text</b>\nУкраїна 😀', { key, port: 55442 }), 200), first);
+  assert.equal(first.conversion.event, 'Contact');
+  const retry = await status('/api/player/messages', send('<b>real text</b>\nУкраїна 😀', { key, port: 55442 }), 200);
+  assert.deepEqual(retry.message, first.message); assert.equal(retry.conversion, null);
   await status('/api/player/messages', send('different', { key }), 409);
   for (const badKey of [undefined, 'short', randomUUID().toUpperCase()]) await status('/api/player/messages', send('hello', { key: badKey }), 400);
   for (const text of ['', ' \n\t', '😀'.repeat(5001)]) await status('/api/player/messages', send(text), 400);
@@ -67,7 +69,8 @@ try {
   assert.equal(row.firstUserMessageAt.toISOString(), rows[0].createdAt.toISOString()); assert.equal(row.lastMessageAt.toISOString(), rows.at(-1).createdAt.toISOString());
   for (let i = 0; i < 20; i++) await status('/api/player/messages', send(`rate ${i}`), 200);
   await status('/api/player/messages', send('over rate', { port: 55442 }), 429);
-  assert.deepEqual(await status('/api/player/messages', send('<b>real text</b>\nУкраїна 😀', { key }), 200), first);
+  const rateRetry = await status('/api/player/messages', send('<b>real text</b>\nУкраїна 😀', { key }), 200);
+  assert.deepEqual(rateRetry.message, first.message); assert.equal(rateRetry.conversion, null);
   const stranger = await identity('Stage3 isolated'); assert.equal((await status('/api/player/messages?after=0', { cookie: stranger }, 200)).messages.length, 1);
   await pool.query('UPDATE "Conversation" SET "closedAt"=clock_timestamp() WHERE id=$1', [row.id]);
   await status('/api/player/messages', send('<b>real text</b>\nУкраїна 😀', { key }), 200);

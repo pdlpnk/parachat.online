@@ -54,16 +54,21 @@ try {
   const clientCookie = credentials[0];
   assert.ok(clientCookie);
   const raw = clientCookie.split('=')[1];
+  let leads = 0;
   for (const response of responses) {
-    assert.deepEqual(await response.json(), { ok: true });
+    const confirmed = await response.json();
+    assert.equal(confirmed.ok, true);
+    if (confirmed.conversion) { assert.equal(confirmed.conversion.event, "Lead"); leads++; } else assert.equal(confirmed.conversion, null);
     const header = response.headers.getSetCookie().find((v) => v.startsWith('__Host-lina_client='));
     for (const flag of ['HttpOnly', 'Secure', 'SameSite=lax', 'Path=/']) assert.ok(header.includes(flag));
     assert.ok(!/domain=/i.test(header));
     assert.equal(response.headers.get('cache-control'), 'no-store');
   }
+  assert.equal(leads, 1);
   // Lost all Set-Cookie responses: retry with only the still-installed bootstrap.
   const replay = await request('/api/player/start', { method: 'POST', cookie: bootstrap, body: { displayName: '<b>Smoke Роман</b>' } });
   assert.equal(cookie(replay, '__Host-lina_client'), clientCookie);
+  assert.equal((await replay.json()).conversion, null);
   const rendered = await (await request('/', { cookie: clientCookie })).text();
   assert.doesNotMatch(rendered, /Your name/);
   assert.match(rendered, /&lt;b&gt;Smoke Роман&lt;\/b&gt;/);
