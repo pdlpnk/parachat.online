@@ -296,3 +296,13 @@ button.tag-chip{cursor:pointer}.tag-chip[aria-pressed=true]{outline:2px solid cu
 .admin-shell .admin-toolbar .brand-mark {flex-shrink:0;}
 
 .admin-shell .tag-filter-options button:not(.tag-chip),.admin-shell .tag-picker button:not(.tag-chip):not(.tag-edit) {background:var(--color-history);color:var(--color-text);}
+
+/* Optional marketing consent uses the existing Player theme and font. */
+.marketing-consent { flex: 0 0 auto; padding: 6px 16px; font-size: 12px; line-height: 1.45; min-width: 0; }
+.marketing-consent button { font: inherit; color: inherit; cursor: pointer; }
+.privacy-toggle { background: transparent; border: 0; text-decoration: underline; padding: 4px 0; }
+.privacy-panel { max-height: 30dvh; overflow-y: auto; overflow-wrap: anywhere; }
+.privacy-panel p { margin: 6px 0; }
+.privacy-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.privacy-actions button { background: transparent; border: 1px solid currentColor; border-radius: 8px; padding: 8px 12px; }
+.name-card .marketing-consent { padding: 12px 0 0; }

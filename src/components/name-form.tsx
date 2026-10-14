@@ -1,5 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { MarketingConsent } from "./marketing-consent";
+import { trackConversion } from "@/lib/meta-pixel";
+import {validateNewDisplayName} from "@/lib/player";
 import {LanguagePicker} from "./player-settings";
 import {WORDS,playerError} from "@/lib/player-i18n";
 import {browserLocale,type Locale} from "@/lib/preferences";
@@ -13,6 +17,7 @@ async function bootstrap() {
 }
 const subscribeLanguage=()=>()=>{};
 export function NameForm({unavailable=false}:{unavailable?:boolean}) {
+  const router = useRouter();
   const detected=useSyncExternalStore(subscribeLanguage,()=>browserLocale(navigator.language),()=>"EN" as Locale);
   const [chosen,setLocale]=useState<Locale|null>(null);const locale=chosen??detected,t=WORDS[locale];
   const [name, setName] = useState("");
@@ -28,6 +33,7 @@ export function NameForm({unavailable=false}:{unavailable?:boolean}) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy||unavailable) return;
+    if (!validateNewDisplayName(name)) { setError("name"); return; }
     setBusy(true); setError("");
     try {
       if (!navigator.locks) throw new Error("secure");
@@ -40,8 +46,10 @@ export function NameForm({unavailable=false}:{unavailable?:boolean}) {
           if (!result.ok) {
             throw new Error(String(result.status));
           }
+          const confirmed = await result.json();
+          trackConversion(confirmed.conversion);
         }
-        window.location.replace("/");
+        router.refresh();
       });
     } catch (cause) { setError(cause instanceof Error ? cause.message : "503"); }
     finally { setBusy(false); }
@@ -56,10 +64,11 @@ export function NameForm({unavailable=false}:{unavailable?:boolean}) {
       <input id="displayName" name="displayName" autoComplete="given-name" placeholder={t.namePlaceholder} value={name}
         onChange={(event) => setName(event.target.value)} required maxLength={160} disabled={busy}
         aria-describedby={error ? "start-error" : undefined} />
-      {error && <p className="error" id="start-error" role="alert">{error==="secure"?t.secure:playerError(Number(error),locale)}</p>}
+      {error && <p className="error" id="start-error" role="alert">{error==="name"?t.nameError:error==="secure"?t.secure:playerError(Number(error),locale)}</p>}
       <LanguagePicker landing value={locale} onChange={setLocale} disabled={busy}/>
       <button disabled={busy||unavailable} type="submit">{busy ? t.opening : t.start}</button>
     </form>
+    <MarketingConsent locale={locale}/>
     <noscript>{t.javascript}</noscript>
   </section></main>;
 }

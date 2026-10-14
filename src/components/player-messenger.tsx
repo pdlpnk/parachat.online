@@ -1,4 +1,7 @@
 "use client";
+import { MarketingConsent } from "./marketing-consent";
+import { trackConversion } from "@/lib/meta-pixel";
+import type { Conversion } from "@/lib/tracking";
 import {PlayerSettings} from "./player-settings";
 import {DEFAULT_PREFERENCES,type Preferences} from "@/lib/preferences";
 import {WORDS,playerError} from "@/lib/player-i18n";
@@ -120,7 +123,8 @@ export function PlayerMessenger({ liId, initialMessages, initialPreferences=DEFA
     try {
       let body:BodyInit;let headers:Record<string,string>={'Idempotency-Key':logical.key};
       if(logical.file){const form=new FormData();form.set('text',logical.text);form.set('file',logical.file);body=form;}else{headers={...headers,'Content-Type':'application/json'};body=JSON.stringify({text:logical.text});}
-      const result = await request<{ message: MessageDTO }>(`/api/player/${logical.file?"attachments":"messages"}`, {method:'POST',headers,body,signal:controller.signal});
+      const result = await request<{ message: MessageDTO; conversion?: Conversion | null }>(`/api/player/${logical.file?"attachments":"messages"}`, {method:'POST',headers,body,signal:controller.signal});
+      trackConversion(result.conversion);
       if (!alive.current) return;
       forceBottom.current = true; setMessages(current => mergeMessages(current, [result.message]));
       // A poll can already have delivered the same message, so also scroll explicitly on confirmation.
@@ -147,6 +151,7 @@ export function PlayerMessenger({ liId, initialMessages, initialPreferences=DEFA
       if (nearBottom.current) { setNewMessages(false); scheduleRead(); }
     }}><div className="history-content"><ol className="message-list">{messages.map(message => <MessageBubble key={message.sequence} locale={preferences.locale} message={{ id: String(message.sequence), kind: message.authorType, text: message.authorType==="SYSTEM"?systemText(message.system?.key??null,message.system?.params,preferences.locale):message.text, attachments:message.attachments, time: hydrated ? localMessageTime(message.createdAt) : undefined }} />)}</ol></div></section>
     {newMessages && <button className="new-messages" onClick={() => { if (history.current) history.current.scrollTop = history.current.scrollHeight; nearBottom.current = true; setNewMessages(false); scheduleRead(); }}>{t.newMessages}{unread > 0 ? ` · ${unread}` : ""} ↓</button>}
+    <MarketingConsent locale={preferences.locale}/>
     <footer className="composer" aria-label={t.compose} aria-busy={sending}><form onSubmit={e => { e.preventDefault(); void send(); }}>
       {file&&<AttachmentPreview locale={preferences.locale} file={file} onRemove={()=>setFile(undefined)} disabled={sending}/> }
       <div className={`composer-field${error ? " composer-error" : ""}`}>

@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")); }
     catch { throw new StartError(400, "Неверный формат запроса."); }
     const issued = await startPlayer(db, jar.get(policy.bootstrap)?.value, body?.displayName, pepper, body?.locale ?? "RU");
-    const result = response({ ok: true });
+    const result = response({ ok: true, conversion: issued.conversion });
     result.cookies.set(policy.client, issued.raw, { ...policy.flags, expires: issued.expiresAt });
     result.cookies.set(policy.bootstrap, "", { ...policy.flags, maxAge: 0 });
     return result;

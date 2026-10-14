@@ -1,8 +1,9 @@
+import { conversionReceipt } from "../tracking";
 import {validLocale,type Locale} from "../../lib/preferences";
 import { randomBytes } from "node:crypto";
 import type { PrismaClient } from "../../generated/prisma/client";
 import { emojiForLiNumber } from "../../lib/emoji";
-import { validateDisplayName } from "../../lib/player";
+import { validateNewDisplayName } from "../../lib/player";
 import { CREDENTIAL_SECONDS, credentialHash, readBootstrap, validCredential } from "./crypto";
 
 import { messageDTO, messageSelect } from "../messages/dto";
@@ -35,12 +36,12 @@ export type Player = NonNullable<Awaited<ReturnType<typeof resolvePlayer>>>;
 /** Only trusted route code receives the raw result, solely to install the HttpOnly cookie. */
 export async function startPlayer(db: PrismaClient, bootstrap: string | undefined, input: unknown, pepper: string, locale:Locale = "RU") {
   if(!validLocale(locale))throw new StartError(400,"Некорректный язык.");
-  const name = validateDisplayName(input);
-  if (!name) throw new StartError(400, "Введите имя от 1 до 80 символов без управляющих знаков.");
+  const name = validateNewDisplayName(input);
+  if (!name) throw new StartError(400, "Введите имя от 3 до 80 символов без управляющих знаков.");
   const ticket = readBootstrap(bootstrap, pepper);
   if (!ticket) throw new StartError(409, "Время ожидания истекло. Нажмите «Начать» ещё раз.");
   const hash = credentialHash(ticket.raw, pepper);
-  const expiresAt = await db.$transaction(async (tx) => {
+  const issued = await db.$transaction(async (tx) => {
     // Shared PostgreSQL transaction lock, not a Node-process lock. Hash collisions only serialize unrelated starts.
     await tx.$queryRaw`SELECT pg_advisory_xact_lock(${BigInt.asIntN(64, BigInt(`0x${hash.slice(0, 16)}`))})::text`;
     if (!readBootstrap(bootstrap, pepper)) throw new StartError(409, "Время ожидания истекло. Нажмите «Начать» ещё раз.");
@@ -50,7 +51,7 @@ export async function startPlayer(db: PrismaClient, bootstrap: string | undefine
     if (existing) {
       if (existing.revokedAt || existing.expiresAt <= new Date()) throw new StartError(409, "Сессия недоступна. Обновите страницу.");
       if (existing.client.displayName !== name) throw new StartError(409, "Начало чата уже подтверждено с другим именем. Повторите исходное имя.");
-      return existing.expiresAt;
+      return { expiresAt: existing.expiresAt, conversion: null };
     }
     // Coarse shared safety ceiling; deployment must also limit requests per IP at a trusted ingress.
     await tx.$queryRaw`SELECT pg_advisory_xact_lock(1279872577, 2)::text`;
@@ -67,7 +68,7 @@ export async function startPlayer(db: PrismaClient, bootstrap: string | undefine
     } });
     const expiry = new Date(Date.now() + CREDENTIAL_SECONDS * 1000);
     await tx.clientCredential.create({ data: { clientId: client.id, credentialHash: hash, expiresAt: expiry } });
-    return expiry;
+    return { expiresAt: expiry, conversion: conversionReceipt("Lead", locale) };
   }, { isolationLevel: "ReadCommitted", maxWait: 5000, timeout: 10000 });
-  return { raw: ticket.raw, expiresAt };
+  return { raw: ticket.raw, ...issued };
 }

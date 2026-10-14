@@ -8,7 +8,7 @@ import { validUuid } from '../../lib/admin';
 import { getDatabase } from '../db';
 import { messageContext } from '../messages/http';
 import { adminContext } from '../admin/http';
-import { authenticate,sendMessage } from '../messages/service';
+import { authenticate,sendPlayerMessage } from '../messages/service';
 import { authenticateAdmin } from '../admin/auth';
 import { adminSend } from '../admin/messenger';
 import { StartError } from '../identity/service';
@@ -37,8 +37,8 @@ export async function upload(request:Request,admin:boolean,id?:string){
   const file=form.get('file'),text=form.get('text');if(form.getAll('file').length!==1||form.getAll('text').length!==1||[...form.keys()].some(k=>!['file','text'].includes(k))||!(file instanceof File)||typeof text!=='string')throw new StartError(400,'Некорректные поля загрузки.');
   const bytes=Buffer.from(await file.arrayBuffer()),metadata=validateFile(file.name,file.type,bytes);stored=await storeFile(bytes);
   const attachment={...metadata,storageKey:stored.storageKey};
-  const message=admin?await adminSend(context.db,context.raw,id!,text,key,attachment):await sendMessage(context.db,context.raw,context.pepper,text,key,attachment);
-  completed=true;return response({message});
+  const result=admin?{message:await adminSend(context.db,context.raw,id!,text,key,attachment)}:await sendPlayerMessage(context.db,context.raw,context.pepper,text,key,attachment);
+  completed=true;return response(result);
  }finally{
   uploads--;
   // Only clean up after a confirmed transaction result. An uncertain commit may still be in flight.

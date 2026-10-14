@@ -1,3 +1,4 @@
+import { conversionReceipt } from "../tracking";
 import { sameAttachment, type StoredAttachment } from "../attachments/validation";
 import type { PrismaClient, Prisma } from "../../generated/prisma/client";
 import { normalizeMessage, validMessageKey, validSequence } from "../../lib/messages";
@@ -18,7 +19,7 @@ export async function authenticate(tx: Tx, raw: string | undefined, pepper: stri
   return rows[0];
 }
 const options = { maxWait: 5000, timeout: 10000 };
-export async function sendMessage(db: PrismaClient, raw: string | undefined, pepper: string, input: unknown, key: unknown, file?: StoredAttachment) {
+export async function sendPlayerMessage(db: PrismaClient, raw: string | undefined, pepper: string, input: unknown, key: unknown, file?: StoredAttachment) {
   const text = file && input === "" ? "" : normalizeMessage(input);
   if (text === null) throw new StartError(400, "Введите сообщение от 1 до 5000 символов.");
   if (!validMessageKey(key)) throw new StartError(400, "Некорректный ключ отправки.");
@@ -32,14 +33,15 @@ export async function sendMessage(db: PrismaClient, raw: string | undefined, pep
     const prior = await tx.message.findUnique({ where: { conversationId_idempotencyKey: { conversationId: owner.conversationId, idempotencyKey: key } }, include: { attachments: true } });
     if (prior) {
       if (prior.authorType !== "USER" || prior.clientAuthorId !== owner.clientId || prior.body !== text || !sameAttachment(prior.attachments, file)) throw new StartError(409, "Ключ уже использован для другого сообщения.");
-      return messageDTO(prior);
+      return { message: messageDTO(prior), conversion: null };
     }
+    const conversation = await tx.conversation.findUniqueOrThrow({ where: { id: owner.conversationId }, select: { firstUserMessageAt: true, client: { select: { locale: true } } } });
     const recent = await tx.message.count({ where: { conversationId: owner.conversationId, authorType: "USER", createdAt: { gte: new Date(clock.now.getTime() - 60000) } } });
     if (recent >= SENDS_PER_MINUTE) throw new StartError(429, "Слишком много сообщений. Попробуйте через минуту.");
     const saved = await tx.message.create({ data: { conversationId: owner.conversationId, clientAuthorId: owner.clientId, authorType: "USER", body: text, idempotencyKey: key, createdAt: clock.createdAt }, select: { ...messageSelect, id: true } });
     if(file){const attached=await tx.attachment.create({data:{...file,messageId:saved.id,conversationId:owner.conversationId}});saved.attachments=[attached];}
     await tx.$executeRaw`UPDATE "Conversation" SET "firstUserMessageAt" = COALESCE("firstUserMessageAt", ${saved.createdAt}), "lastMessageAt" = ${saved.createdAt}, "closedAt" = NULL, "updatedAt" = ${saved.createdAt} WHERE id = ${owner.conversationId}::uuid`;
-    return messageDTO(saved);
+    return { message: messageDTO(saved), conversion: conversation.firstUserMessageAt === null ? conversionReceipt("Contact", conversation.client.locale) : null };
   }, options);
 }
 export async function pollMessages(db: PrismaClient, raw: string | undefined, pepper: string, after: number) {
@@ -64,4 +66,9 @@ export async function markRead(db: PrismaClient, raw: string | undefined, pepper
       RETURNING "lastReadSequence" AS "readSequence"`;
     return result!;
   }, options);
+}
+
+// Preserve the internal DTO-only interface used by existing callers.
+export async function sendMessage(...args: Parameters<typeof sendPlayerMessage>) {
+  return (await sendPlayerMessage(...args)).message;
 }

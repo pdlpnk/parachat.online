@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { randomBytes } from "node:crypto";
 import { BOOTSTRAP_SECONDS, credentialHash, issueBootstrap, readBootstrap, validCredential } from "../../src/server/identity/crypto";
-import { systemText, validateDisplayName } from "../../src/lib/player";
+import { systemText, validateDisplayName, validateNewDisplayName } from "../../src/lib/player";
 const pepper = randomBytes(32).toString("hex");
 
 test("Unicode name validation trims and normalizes, rejects empty/control/oversized input", () => {
@@ -34,4 +34,11 @@ test("system renderer safely resolves known scalar params and has a neutral fall
   for (const value of [null, {}, { name: {} }, { name: "" }]) assert.equal(systemText("system.welcome", value), "Системное сообщение.");
   assert.equal(systemText("system.future", { name: "A" }), "Системное сообщение.");
   assert.ok(systemText("system.welcome", { name: "<script>" }).includes("<script>")); // React escapes text at rendering.
+});
+
+test("new names require three normalized Unicode characters; old welcome remains readable", () => {
+  for (const value of ["A", "Al", "  Al  ", "🙂🙂", "e\u0301a"]) assert.equal(validateNewDisplayName(value), null);
+  for (const value of ["Ali", "Лия", "علی", "🙂🙂🙂"]) assert.equal(validateNewDisplayName(value), value);
+  assert.equal(validateNewDisplayName("  Ali  "), "Ali");
+  assert.ok(systemText("system.welcome", {name:"Al"}).includes("Al"));
 });

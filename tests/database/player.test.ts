@@ -104,3 +104,11 @@ test("shared creation ceiling rejects new identities but permits committed retri
     assert.equal(await db.client.count({ where: { displayName: "Limited" } }), 0);
   } finally { await db.clientCredential.deleteMany({ where: { credentialHash: { in: hashes } } }); }
 });
+test("short new names are rejected before any Client is created", async () => {
+  const count = await db.client.count();
+  for (const name of ["A", "Al", "  Al  ", "🙂🙂"])
+    await assert.rejects(startPlayer(db, issueBootstrap(pepper), name, pepper), {status:400});
+  assert.equal(await db.client.count(), count);
+  const created = await startPlayer(db, issueBootstrap(pepper), "Ali", pepper);
+  assert.equal((await resolvePlayer(db, created.raw, pepper))?.displayName, "Ali");
+});

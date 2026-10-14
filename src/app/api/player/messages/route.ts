@@ -1,7 +1,7 @@
 import { requireOrigin, response } from "@/server/identity/http";
 import { StartError } from "@/server/identity/service";
 import { messageContext, messageFailure, readBody } from "@/server/messages/http";
-import { pollMessages, sendMessage } from "@/server/messages/service";
+import { pollMessages, sendPlayerMessage } from "@/server/messages/service";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
@@ -15,6 +15,6 @@ export async function POST(request: Request) {
   try {
     requireOrigin(request);
     const text = await readBody(request, "text", 65536);
-    return response({ message: await sendMessage(...await messageContext(), text, request.headers.get("idempotency-key")) });
+    return response(await sendPlayerMessage(...await messageContext(), text, request.headers.get("idempotency-key")));
   } catch (error) { return messageFailure(error); }
 }
